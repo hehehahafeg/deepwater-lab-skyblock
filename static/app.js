@@ -75,10 +75,10 @@ function renderCalc(r) {
   $('calc-result').className='';
   $('calc-result').innerHTML=`<div class="result-main"><div class="result-caption">MODELLED SUBSET · COINS / HOUR</div><div class="result-value" style="color:${complete?'#98ebce':'#eebc84'}">${esc(val)}</div><div class="result-sub">${complete?'Not complete method profit. '+(r.prices_live?'Live Bazaar inputs':'Manual or unverified prices'):'Required input prices are missing. Full profit never calculated.'}</div></div><div class="result-list">
   ${moneyRow('Estimated fished Squids/hour',r.fished_squids_per_hour)}${moneyRow('Natural Squids/hour',r.natural_squids_per_hour)}${moneyRow('Squid share of SC pool (%)',Number((r.squid_share*100).toFixed(2)))}
-  ${moneyRow('Ink Sac units/hour',r.ink_per_hour)}${moneyRow('Ink revenue/hour',r.gross_ink)}${moneyRow('Lily Pad revenue/hour',r.gross_lily)}
+  ${moneyRow('Base ink from fished squids/hour',r.ink_breakdown?.base_ink_from_fished_squids)}${moneyRow('Base ink from natural squids/hour',r.ink_breakdown?.base_ink_from_natural_squids)}${moneyRow('Squid Pet multiplier (automatic)',r.ink_breakdown?.squid_pet_multiplier)}${moneyRow('Ink after Squid Pet/hour',r.ink_breakdown?.ink_after_pet)}${moneyRow('Unverified extra ink multiplier',r.ink_breakdown?.unverified_extra_multiplier)}${moneyRow('Total regular ink equivalents/hour',r.ink_per_hour)}${moneyRow('Ink revenue/hour',r.gross_ink)}${moneyRow('Lily Pad revenue/hour',r.gross_lily)}
   ${moneyRow('Bait cost/hour',r.cost_bait)}${moneyRow('Rain cost/hour',r.cost_rain)}
   <div class="cut"><span>Modelled net (not full)</span><strong>${complete?short(r.modelled_net):'UNAVAILABLE'}</strong></div>
-  </div><div class="warning-box">◈ ${esc((r.missing||[]).length?'Missing: '+r.missing.join(' · '):'This is a partial model; other income and exact pool composition remain unverified.')}<br>${esc(r.warnings?.[1]||'')}</div>
+  </div><div class="warning-box">◈ ${esc((r.missing||[]).length?'Missing: '+r.missing.join(' · '):'This is a partial model; missing Looting and other drop mechanics are NOT silently estimated.')}<br>${esc(r.warnings?.[1]||'')}</div>
   ${complete?`<div class="result-list"><div><span>±15% reel rate — lower / upper</span><strong>${short(r.sensitivity.low)} – ${short(r.sensitivity.high)}</strong></div></div>`:''}`;
 }
 async function runCalc(){
