@@ -83,6 +83,8 @@ def calculate_squid(params: dict, prices: dict, *, prices_live: bool = False) ->
         "tracking": bounded_number(params.get("tracking", 0), "Tracking", 0, 300),
         "time_of_day": str(params.get("time_of_day", "day")),
         "hydra_kills_per_catch": bounded_number(params.get("hydra_kills_per_catch", 2), "Hydra kills per catch", 1, 2),
+        "squid_pet_level": bounded_number(params.get("squid_pet_level", 100), "Squid Pet level", 1, 100),
+        "squid_pet_rarity": str(params.get("squid_pet_rarity", "LEGENDARY")).upper(),
         "natural_spawn_efficiency": bounded_number(params.get("natural_spawn_efficiency", 60), "Natural spawn efficiency", 0, 100),
         "bait_saved_percent": bounded_number(params.get("bait_saved_percent", 10), "Bait conservation", 0, 100),
         "ink_yield_multiplier": bounded_number(params.get("ink_yield_multiplier", 1), "Ink yield multiplier", 0, 10),
@@ -94,6 +96,8 @@ def calculate_squid(params: dict, prices: dict, *, prices_live: bool = False) ->
     for key in ("squid_hat", "common_hook", "squid_pet", "rain", "pay_rain"):
         p[key] = bool(params.get(key, {"squid_hat": True, "common_hook": True, "squid_pet": True, "rain": True, "pay_rain": True}[key]))
     p["bait"] = str(params.get("bait", "FISH_BAIT"))
+    if p["squid_pet_rarity"] not in ("COMMON", "UNCOMMON", "RARE", "EPIC", "LEGENDARY"):
+        raise ValueError("Unknown Squid Pet rarity")
     if p["time_of_day"] not in ("day", "night"):
         raise ValueError("Time of day must be day or night")
     if p["bait"] not in ("FISH_BAIT", "SPIKED_BAIT", "MINNOW_BAIT", "NONE", "LIGHT_BAIT", "DARK_BAIT", "WHALE_BAIT"):
@@ -113,7 +117,8 @@ def calculate_squid(params: dict, prices: dict, *, prices_live: bool = False) ->
     natural_ceiling = 3600 / 11 * (2/3) * 1.5
     natural_squids = natural_ceiling * p["natural_spawn_efficiency"] / 100 if p["rain"] else 0
     total_squids = fished_squids + natural_squids
-    pet_mult = 2 if p["squid_pet"] else 1
+    pet_max_chance={"COMMON": 0.50, "UNCOMMON": 0.75, "RARE": 0.75, "EPIC": 1.0, "LEGENDARY": 1.0}
+    pet_mult = 1 + pet_max_chance[p["squid_pet_rarity"]]*p["squid_pet_level"]/100 if p["squid_pet"] else 1
     # 2–3 ink and 1–2 Lily Pad per Wiki Squid. Looting/additional game modifiers
     # unvalidated; user-controlled ink yield multiplier is explicitly an assumption.
     ink_count = total_squids * 2.5 * pet_mult * p["ink_yield_multiplier"]
@@ -155,7 +160,7 @@ def calculate_squid(params: dict, prices: dict, *, prices_live: bool = False) ->
         "fishing_level": p["fishing_level"], "tracking": p["tracking"],
         "bait": p["bait"], "time_of_day": p["time_of_day"],
         "hook": "COMMON_HOOK" if p["common_hook"] else "NONE",
-        "squid_hat": p["squid_hat"], "squid_pet": p["squid_pet"],
+        "squid_hat": p["squid_hat"], "squid_pet": p["squid_pet"], "squid_pet_multiplier": pet_mult,
         "natural_squids_per_hour": natural_squids,
         "hydra_kills_per_catch": p["hydra_kills_per_catch"],
         "bait_saved_percent": p["bait_saved_percent"],
@@ -163,7 +168,7 @@ def calculate_squid(params: dict, prices: dict, *, prices_live: bool = False) ->
     }, prices, prices_live=prices_live)
     priced_creature_net = (pool_projection["known_subtotal_after_bait"] - cost_rain
                            if pool_projection["known_subtotal_after_bait"] is not None else None)
-    warnings.append("All 10 basic-water creature drop tables included at base rates. Bazaar-priced loot is itemized; unpriced AH items, rare modifiers and non-creature catches remain excluded.")
+    warnings.append("Up to 10 unlocked basic-water creature drop tables included at base rates. Squid Pet rarity and level bonuses are automatic. Unpriced AH items, other drop modifiers and non-creature catches remain excluded.")
     return {
         "method_id": "birch_squid", "model_status": "partial-model", "is_full_method_profit": False,
         "inputs": p, "squid_share": share,
