@@ -108,6 +108,10 @@ def calculate_squid(params: dict, prices: dict, *, prices_live: bool = False) ->
     # unvalidated; user-controlled ink yield multiplier is explicitly an assumption.
     ink_count = total_squids * 2.5 * pet_mult * p["ink_yield_multiplier"]
     lily_count = total_squids * 1.5 * pet_mult
+    # Decompose expected ink output. This does not invent an unverified Looting multiplier.
+    base_ink_fished = fished_squids * 2.5
+    base_ink_natural = natural_squids * 2.5
+    ink_after_pet = (base_ink_fished + base_ink_natural) * pet_mult
     spent_bait = 0 if p["bait"] == "NONE" else p["reels_per_hour"] * (1 - p["bait_saved_percent"] / 100)
 
     ink_price = p["manual_ink_price"] if p["manual_ink_price"] > 0 else _lookup(prices, "INK_SACK", "instant_sell")
@@ -129,7 +133,7 @@ def calculate_squid(params: dict, prices: dict, *, prices_live: bool = False) ->
     warnings = [
         "PARTIAL LOOT: other sea creatures, treasure, rare dyes, squid pets, inkling and conditional drops are not priced.",
         "POOL MODEL: Wiki basic-water weights are complete. Changing other-common weight from 800 is hypothetical sensitivity only.",
-        "Natural-spawn efficiency and any extra ink yield from Looting are not independently validated.",
+        "Natural-spawn efficiency and any extra ink yield from Looting are not independently validated; extra yield defaults to 1×.",
     ]
     if not prices_live:
         warnings.append("Live Bazaar prices not verified; any manual values are user assumptions.")
@@ -140,6 +144,7 @@ def calculate_squid(params: dict, prices: dict, *, prices_live: bool = False) ->
         "inputs": p, "squid_share": share,
         "fished_squids_per_hour": fished_squids, "natural_squids_per_hour": natural_squids,
         "sea_creatures_per_hour": total_sc, "ink_per_hour": ink_count, "lily_pads_per_hour": lily_count,
+        "ink_breakdown": {"base_ink_from_fished_squids": base_ink_fished, "base_ink_from_natural_squids": base_ink_natural, "squid_pet_multiplier": pet_mult, "ink_after_pet": ink_after_pet, "unverified_extra_multiplier": p["ink_yield_multiplier"], "unit": "regular Ink Sac equivalents", "base_ink_per_squid": 2.5},
         "bait_used_per_hour": spent_bait, "bait_unit_price": bait_price,
         "ink_unit_price": ink_price, "lily_unit_price": lily_price,
         "gross_ink": income_ink, "gross_lily": income_lily,
