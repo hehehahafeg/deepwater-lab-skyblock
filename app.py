@@ -1,11 +1,12 @@
 """Run: python -m uvicorn app:app --host 127.0.0.1 --port 8765"""
 from pathlib import Path
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from engine.market import Bazaar
 from engine.optimizer import optimize_loadouts
+from engine.estimates import estimate_strategy
 from engine.models import CATALOG, SQUID_SOURCES, sensitivity, rank_methods, payback_hours
 from engine.pools import POOLS, public_catalog, project_pool
 from engine.strategies import list_strategies, get_strategy, market_observations, STRATEGIES
@@ -42,20 +43,27 @@ def methods():
     return {'catalog':CATALOG, 'approved_full_profit_methods':[], 'disclaimer':'No complete, price-verified methods yet; ranking intentionally empty.'}
 
 @app.get('/api/strategies')
-def strategies(query:str='', region:str='', availability:str='anytime', effort:str='', show_washed:bool=True, limit:int=200):
+def strategies(query:str='', region:str='', availability:str='anytime', effort:str='', show_washed:bool=True, limit:int=200, magic_find:float=Query(300,ge=0,le=1000), catches_per_hour:float=Query(1050,ge=1,le=4000)):
     try:
-        return list_strategies(query=query,region=region,availability=availability,
+        result = list_strategies(query=query,region=region,availability=availability,
                                effort=effort,show_washed=show_washed,limit=limit)
+        snapshot = market.get()
+        cache = {}
+        for item in result['items']:
+            detail = get_strategy(item['id'])
+            item['estimate'] = estimate_strategy(detail, strategy_comparison_pool(detail), snapshot, cache=cache, magic_find=magic_find, catches_per_hour=catches_per_hour)
+        return result
     except ValueError as e:
         raise HTTPException(status_code=422,detail=str(e))
 
 @app.get('/api/strategies/{strategy_id}')
-def strategy_detail(strategy_id:str):
+def strategy_detail(strategy_id:str, magic_find:float=Query(300,ge=0,le=1000), catches_per_hour:float=Query(1050,ge=1,le=4000)):
     detail=get_strategy(strategy_id)
     if not detail:
         raise HTTPException(status_code=404,detail='Unknown strategy')
     detail = dict(detail, comparison_pool=strategy_comparison_pool(detail))
     market_snapshot=market.get()
+    detail['estimate'] = estimate_strategy(detail, detail['comparison_pool'], market_snapshot, breakdown=True, magic_find=magic_find, catches_per_hour=catches_per_hour)
     observations=market_observations(detail,market_snapshot.get('products',{}),live=market_snapshot.get('live',False))
     return {'strategy':detail,'market_observations':observations,
             'note':'Market item quotes are observations, NOT modelled whole-method profit.'}
