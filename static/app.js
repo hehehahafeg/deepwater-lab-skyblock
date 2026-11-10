@@ -232,6 +232,11 @@ let libraryCatalog=[];
 let libraryPage=1;
 const LIB_PAGE_SIZE=24;
 const LIBRARY_SLOTS={armor:'Armor',rod:'Fishing rod',hook:'Hook',line:'Line',sinker:'Sinker',bait:'Bait',casting_pet:'Casting pet',reeling_pet:'Reeling pet',kill_pet:'Kill pet',weapon:'Weapon',equipment:'Equipment',enchants:'Enchantments',stats:'Stat targets',autopet:'Autopet / swap rule'};
+function optimizedProfitMarkup(s){
+ const estimate=Number.isFinite(s.profit_per_hour)?`${esc(short(s.profit_per_hour))} coins/hr`:'Estimate pending';
+ const tag=s.global_hypermax_verified===true?'':' <span class="library-chip warn">Hypothetical</span>';
+ return `<span class="small"><b>Optimized setup · Estimated net profit/hr</b><br>${estimate}${tag}</span>`;
+}
 function filterLibrary(){
  const search=$('library-search').value.trim().toLowerCase();
  const region=$('library-region').value;
@@ -257,6 +262,7 @@ function filterLibrary(){
    <strong>${esc(s.name)}</strong><span class="small">${esc(s.objective)}</span>
    <span class="tags"><span class="library-chip">${esc(s.effort)} effort</span><span class="library-chip">${esc(s.movement)} movement</span>
    <span class="library-chip ${s.status==='candidate'?'':'warn'}">${esc(s.status)}</span></span>
+   ${optimizedProfitMarkup(s)}
    <span class="small">View full loadout, experiment, tutorial &amp; source links ↗</span>
    </button>`).join('') || `<div class="placeholder-line">No strategies match these filters. Try All locations or include previously tested methods.</div>`;
 }
@@ -267,7 +273,7 @@ function renderHypotheses(){
    <strong>${esc(s.name)}</strong>
    <span class="small">${esc(s.experiment.reason)}</span>
    <span class="small"><b>Field test</b> · ${esc(s.experiment.protocol)}</span>
-   <span class="library-chip warn">Estimated profit · ${Number.isFinite(s.profit_per_hour)?esc(short(s.profit_per_hour))+' coins/hr':'Pending calculator coverage'}</span>
+   ${optimizedProfitMarkup(s)}
    <span class="small">Open full method ↗</span>
  </button>`).join('') || '<div class="placeholder-line">No featured hypotheses are available.</div>';
 }
@@ -296,6 +302,7 @@ async function showStrategy(id){
   el.innerHTML=`<button type="button" class="btn btn-outline" id="close-library-detail">← Close setup</button>
   <h2>${esc(s.name)}</h2><p class="subtle">${esc(s.region)} · ${esc(s.availability)} · ${esc(s.effort)} effort · ${esc(s.movement)} movement · Reviewed ${esc(s.reviewed_on)}</p>
   <div class="warning-box"><strong>HIGH-END LOADOUT CANDIDATE — NOT A PROVEN GLOBAL OPTIMUM.</strong> ${esc(s.profit_status)}. Gear depends on caps, market prices and verified drop mechanics.${s.user_note?'<p>'+esc(s.user_note)+'</p>':''}</div>
+  <div class="method-section">${optimizedProfitMarkup(s)}</div>
   <div class="method-section"><h3>What you're farming</h3><p class="subtle">${esc(s.objective)}</p><p class="subtle">${esc(s.mechanics_note)}</p></div>
   <div class="method-section"><h3>High-end setup · Every slot</h3><div class="slot-grid">${slotMarkup(s.best_documented_setup)}</div></div>
   <div class="method-section"><h3>Hypothetical / experimental setup</h3><strong>${esc(s.experiment.name)}</strong><p class="subtle">${esc(s.experiment.reason)}</p><p class="subtle">Test protocol: ${esc(s.experiment.protocol)}</p><span class="library-chip warn">NOT VERIFIED</span></div>
