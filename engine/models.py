@@ -78,7 +78,10 @@ def calculate_squid(params: dict, prices: dict, *, prices_live: bool = False) ->
         "reels_per_hour": bounded_number(params.get("reels_per_hour", 1050), "Reels/hour", 0, 5000),
         "sea_creature_chance": bounded_number(params.get("sea_creature_chance", 100), "Sea Creature Chance", 0, 100),
         "double_hook_chance": bounded_number(params.get("double_hook_chance", 30), "Double Hook Chance", 0, 100),
-        "other_common_weight": bounded_number(params.get("other_common_weight", 800), "Other common weight", 0, BASE_OTHER_WEIGHT),
+        "other_common_weight": BASE_OTHER_WEIGHT,  # Wiki Sea Walker weight, not a player stat.
+        "fishing_level": bounded_number(params.get("fishing_level", 50), "Fishing level", 1, 50),
+        "tracking": bounded_number(params.get("tracking", 0), "Tracking", 0, 300),
+        "hydra_kills_per_catch": bounded_number(params.get("hydra_kills_per_catch", 2), "Hydra kills per catch", 1, 2),
         "natural_spawn_efficiency": bounded_number(params.get("natural_spawn_efficiency", 60), "Natural spawn efficiency", 0, 100),
         "bait_saved_percent": bounded_number(params.get("bait_saved_percent", 10), "Bait conservation", 0, 100),
         "ink_yield_multiplier": bounded_number(params.get("ink_yield_multiplier", 1), "Ink yield multiplier", 0, 10),
@@ -90,13 +93,17 @@ def calculate_squid(params: dict, prices: dict, *, prices_live: bool = False) ->
     for key in ("squid_hat", "common_hook", "squid_pet", "rain", "pay_rain"):
         p[key] = bool(params.get(key, {"squid_hat": True, "common_hook": True, "squid_pet": True, "rain": True, "pay_rain": True}[key]))
     p["bait"] = str(params.get("bait", "FISH_BAIT"))
-    if p["bait"] not in ("FISH_BAIT", "SPIKED_BAIT", "MINNOW_BAIT", "NONE"):
+    if p["bait"] not in ("FISH_BAIT", "SPIKED_BAIT", "MINNOW_BAIT", "NONE", "LIGHT_BAIT", "DARK_BAIT", "WHALE_BAIT"):
         raise ValueError("Unsupported bait choice")
 
     # Supplying 'reels/hour' means actions, NOT already-counted sea creatures.
     sea_creature_reels = p["reels_per_hour"] * p["sea_creature_chance"] / 100
     total_sc = sea_creature_reels * (1 + p["double_hook_chance"] / 100)
-    share = squid_share(squid_hat=p["squid_hat"], common_hook=p["common_hook"], other_common_weight=p["other_common_weight"])
+    # Use the complete eligible pool, including Fishing unlocks and Tracking.
+    from engine.pools import rarity_weighted_pool, project_pool
+    weighted = rarity_weighted_pool("basic_water", fishing_level=p["fishing_level"], tracking=p["tracking"],
+        bait=p["bait"], hook="COMMON_HOOK" if p["common_hook"] else "NONE", squid_hat=p["squid_hat"])
+    share = next(row["probability"] for row in weighted if row["name"] == "Squid")
     fished_squids = total_sc * share
     # Wiki: 66.6% chance for 1–2 natural squids every 11s, conditional on cap.
     # Efficiency is an explicit assumption accounting for spawn cap and clearing.
@@ -132,13 +139,27 @@ def calculate_squid(params: dict, prices: dict, *, prices_live: bool = False) ->
     # other sea creatures, non-sea-creature catch loot, rare dyes are not modelled.
     warnings = [
         "PARTIAL LOOT: other sea creatures, treasure, rare dyes, squid pets, inkling and conditional drops are not priced.",
-        "POOL MODEL: Wiki basic-water weights are complete. Changing other-common weight from 800 is hypothetical sensitivity only.",
+        "POOL MODEL: Wiki weights, Fishing unlocks and applicable modifiers are calculated automatically. Sea Walker is the only other COMMON basic-water creature.",
         "Natural-spawn efficiency and any extra ink yield from Looting are not independently validated; extra yield defaults to 1×.",
     ]
     if not prices_live:
         warnings.append("Live Bazaar prices not verified; any manual values are user assumptions.")
     if not price_complete:
         warnings.append("Missing required market prices. Modelled net is withheld rather than assuming zero.")
+    pool_projection = project_pool({
+        "pool": "basic_water", "reels_per_hour": p["reels_per_hour"],
+        "sea_creature_chance": p["sea_creature_chance"], "double_hook_chance": p["double_hook_chance"],
+        "fishing_level": p["fishing_level"], "tracking": p["tracking"],
+        "bait": p["bait"], "hook": "COMMON_HOOK" if p["common_hook"] else "NONE",
+        "squid_hat": p["squid_hat"], "squid_pet": p["squid_pet"],
+        "natural_squids_per_hour": natural_squids,
+        "hydra_kills_per_catch": p["hydra_kills_per_catch"],
+        "bait_saved_percent": p["bait_saved_percent"],
+        "manual_bait_price": p["manual_bait_price"],
+    }, prices, prices_live=prices_live)
+    priced_creature_net = (pool_projection["known_subtotal_after_bait"] - cost_rain
+                           if pool_projection["known_subtotal_after_bait"] is not None else None)
+    warnings.append("All 10 basic-water creature drop tables included at base rates. Bazaar-priced loot is itemized; unpriced AH items, rare modifiers and non-creature catches remain excluded.")
     return {
         "method_id": "birch_squid", "model_status": "partial-model", "is_full_method_profit": False,
         "inputs": p, "squid_share": share,
@@ -151,6 +172,7 @@ def calculate_squid(params: dict, prices: dict, *, prices_live: bool = False) ->
         "cost_bait": cost_bait, "cost_rain": cost_rain,
         "modelled_net": modelled_net,
         "price_complete": price_complete, "prices_live": prices_live,
+        "pool_projection": pool_projection, "priced_creature_net": priced_creature_net,
         "missing": missing, "warnings": warnings,
         "sources": SQUID_SOURCES,
         "validation_target": {"user_observed_total_per_hour": [30_000_000, 35_000_000], "user_observed_ink_per_hour": [20_000_000, 25_000_000], "note": "These are independent observations, not hardcoded predictions."},
