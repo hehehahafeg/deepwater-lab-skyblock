@@ -278,10 +278,17 @@ let libraryCatalog=[];
 let libraryPage=1;
 const LIB_PAGE_SIZE=24;
 const LIBRARY_SLOTS={armor:'Armor',rod:'Fishing rod',hook:'Hook',line:'Line',sinker:'Sinker',bait:'Bait',casting_pet:'Casting pet',reeling_pet:'Reeling pet',kill_pet:'Kill pet',weapon:'Weapon',equipment:'Equipment',enchants:'Enchantments',stats:'Stat targets',autopet:'Autopet / swap rule'};
-function optimizedProfitMarkup(s){
- const estimate=Number.isFinite(s.profit_per_hour)?`${esc(short(s.profit_per_hour))} coins/hr`:'Estimate pending';
- const tag=s.global_hypermax_verified===true?'':' <span class="library-chip warn">Hypothetical</span>';
- return `<span class="small"><b>Optimized setup · Estimated net profit/hr</b><br>${estimate}${tag}</span>`;
+let libraryEstimateQuery='';
+function optimizedProfitMarkup(s,detail=false){
+ const e=s.estimate;
+ if(!e||e.status!=='estimated')return `<span class="small"><b>Estimate unavailable</b><br>${esc(e?.reason||'No applicable model')}</span>`;
+ const a=e.assumptions,gear=e.setup;
+ let html=`<div class="small"><b>${esc(short(e.low))}–${esc(short(e.high))} coins/hr</b> <span class="library-chip warn">Hypothetical · partial loot</span><br>Priced subtotal after bait${a.rain_cost?' + rain costs':''}; central estimate ${esc(short(e.coins_per_hour))}/hr.<br>${esc(a.reels)} catches/hr · ${esc(a.magic_find)} MF · 100 SCC · speed capped<br>${gear.unpriced} unpriced drops · ${gear.missing_tables} missing creature tables</div>`;
+ if(detail){
+ const drops=e.creatures.flatMap(c=>c.drops.map(d=>`<tr><td>${esc(c.name)} · ${esc(d.name)}</td><td>${Number(d.expected_units).toFixed(2)}</td><td>${d.expected_coins===null?'Unpriced':money(d.expected_coins)}</td></tr>`));
+ html+=`<p>Best of ${e.candidates_compared} modeled combinations: <b>${esc(gear.helmet)}</b>, ${esc(gear.necklace)}, ${esc(gear.equipment.join(', '))}, with three Magma Lord armor pieces. ${gear.dh}% Double Hook; Looting V.</p><p>${esc(e.caveat)}</p><p>Bait: ${money(e.bait_cost)}/hr. Rain: ${money(a.rain_cost)}/hr. Jackpot EV (excluded): ${money(e.jackpot_ev)}/hr.</p><p>Missing tables: ${esc(e.missing_tables.join(', ')||'None in this pool')}. Price checked: ${esc(e.checked_at||'current snapshot')}.</p><details><summary>Every modeled drop · quantities and value per hour</summary><div class="table-scroll"><table><thead><tr><th>Creature / drop</th><th>Units/hr</th><th>Coins/hr</th></tr></thead><tbody>${drops.join('')}</tbody></table></div></details>`;
+ }
+ return html;
 }
 function filterLibrary(){
  const search=$('library-search').value.trim().toLowerCase();
@@ -325,7 +332,7 @@ function renderHypotheses(){
 }
 async function loadLibrary(){
  try{
-  const result=await api('/api/strategies?availability=all&limit=200');
+  const result=await api('/api/strategies?availability=all&limit=200'+libraryEstimateQuery);
   libraryCatalog=result.items||[];
   const methods=$('sessionType');
   const names=new Set([...methods.options].map(option=>option.value));
@@ -509,7 +516,7 @@ async function showStrategy(id){
  el.innerHTML='<p>Loading method setup and live market context…</p>';
  navigate('library');
  try{
-  const data=await api('/api/strategies/'+encodeURIComponent(id));
+  const data=await api('/api/strategies/'+encodeURIComponent(id)+'?'+libraryEstimateQuery.slice(1));
   const s=data.strategy,ob=data.market_observations||{};
   const marketRows=(ob.item_prices||[]);
   const marketInfo=marketRows.length ?
@@ -518,7 +525,7 @@ async function showStrategy(id){
   el.innerHTML=`<button type="button" class="btn btn-outline" id="close-library-detail">← Close setup</button>
   <h2>${esc(s.name)}</h2><p class="subtle">${esc(s.region)} · ${esc(s.availability)} · ${esc(s.effort)} effort · ${esc(s.movement)} movement · Reviewed ${esc(s.reviewed_on)}</p>
   <div class="warning-box"><strong>HIGH-END LOADOUT CANDIDATE — NOT A PROVEN GLOBAL OPTIMUM.</strong> ${esc(s.profit_status)}. Gear depends on caps, market prices and verified drop mechanics.${s.user_note?'<p>'+esc(s.user_note)+'</p>':''}</div>
-  <div class="method-section">${optimizedProfitMarkup(s)}</div>
+  <div class="method-section">${optimizedProfitMarkup(s,true)}</div>
   <div class="method-section"><h3>What you're farming</h3><p class="subtle">${esc(s.objective)}</p><p class="subtle">${esc(s.mechanics_note)}</p></div>
   ${optimizerMarkup(s)}
   <div class="method-section"><h3>High-end setup · Every slot</h3><div class="slot-grid">${slotMarkup(s.best_documented_setup)}</div></div>
@@ -538,6 +545,7 @@ async function showStrategy(id){
  }catch(e){el.innerHTML=`<div class="warning-box">Couldn't open this method: ${esc(e.message)}</div>`;}
 }
 function setupLibrary(){
+ $('library-estimate-form').addEventListener('submit',async event=>{event.preventDefault();libraryEstimateQuery='';for(const [id,key] of [['library-mf','magic_find'],['library-catches','catches_per_hour']]){if($(id).value!=='')libraryEstimateQuery+='&'+key+'='+encodeURIComponent($(id).value);} $('library-estimate-status').textContent='Recalculating…';$('library-detail').hidden=true;await loadLibrary();$('library-estimate-status').textContent='Estimates use the values shown on each card.';});
  for(const id of ['library-search','library-region','library-effort','library-event','library-washed']){
   $(id).addEventListener(id==='library-search'?'input':'change',()=>{libraryPage=1;filterLibrary();});
  }

@@ -87,7 +87,10 @@
       <div id="hypothetical-cards" class="library-cards" aria-live="polite">Loading hypotheses…</div>
     </section>
     <section class="panel library-tools">
-      <div class="form-row"><div class="form-group"><label for="library-search">Search methods, targets, hypothesis</label><input type="search" id="library-search" placeholder="Wiki Tiki, Hound, squid, treasure, etc." /></div><div class="form-group"><label for="library-region">Location</label><select id="library-region"><option value="">All locations</option></select></div></div>
+      <form id="library-estimate-form" class="method-section">
+<h3>Personalize estimates (optional)</h3><p>Leave blank for defaults. Catches/hour means successful reels before Double Hook bonus creatures; rain-spawned squids are counted separately.</p>
+<div class="form-row"><label>Magic Find<input id="library-mf" type="number" min="0" max="1000" step="any" placeholder="Default: 300"></label><label>Catches per hour<input id="library-catches" type="number" min="1" max="4000" step="any" placeholder="Default: 1,050"></label></div><button class="btn btn-primary" type="submit">Recalculate estimates</button><p id="library-estimate-status" aria-live="polite"></p></form>
+<div class="form-row"><div class="form-group"><label for="library-search">Search methods, targets, hypothesis</label><input type="search" id="library-search" placeholder="Wiki Tiki, Hound, squid, treasure, etc." /></div><div class="form-group"><label for="library-region">Location</label><select id="library-region"><option value="">All locations</option></select></div></div>
       <div class="form-row"><div class="form-group"><label for="library-effort">Effort</label><select id="library-effort"><option value="">All effort levels</option><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option></select></div><div class="form-group"><label for="library-event">Availability</label><select id="library-event"><option value="anytime">Anytime only (default)</option><option value="all">All incl. events</option><option value="event-only">Event-only</option></select></div></div>
       <label class="library-toggle"><input type="checkbox" id="library-washed" checked /> Include washed, tested and inefficient methods</label>
       <p class="panel-text" id="library-count">Loading catalog…</p>

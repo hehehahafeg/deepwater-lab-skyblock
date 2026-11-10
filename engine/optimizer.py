@@ -32,6 +32,9 @@ def optimize_loadouts(pool, target, cap, params, prices, *, live):
                     double_hook_chance=effective_dh, squid_hat=helmet == 'Squid Hat',
                     bait='HOTSPOT_BAIT' if hotspot else 'NONE',
                     hook='HOTSPOT_HOOK' if hotspot else ('COMMON_HOOK' if target == 'Squid' else 'NONE'),
+                    squid_pet=params.get('squid_pet', False),
+                    natural_squids_per_hour=params.get('natural_squids_per_hour', 0),
+                    hydra_kills_per_catch=2,
                     hotspot_override_percent=85, magic_find=params.get('magic_find', 0),
                     looting_level=params.get('looting_level', 0),
                 ), prices, prices_live=live)
@@ -39,7 +42,7 @@ def optimize_loadouts(pool, target, cap, params, prices, *, live):
                 row = dict(helmet=helmet, necklace=necklace, equipment=equipment, speed=total_speed,
                            scc=effective_scc, dh=effective_dh, capped=True, net=net,
                            creatures_per_hour=result['creature_rate'], bait_cost=result['bait_cost'],
-                           unpriced=len(result['unpriced']), missing_tables=len(result['unmodelled']))
+                           unpriced=len(result['unpriced']), missing_tables=len(result['unmodelled']), projection=result)
                 rows.append(row)
     rows.sort(key=lambda row: (row['net'] is not None, row['net'] if row['net'] is not None else 0), reverse=True)
     return {'rows': rows, 'speed_cap': cap, 'prices_live': live, 'full_profit_verified': False}

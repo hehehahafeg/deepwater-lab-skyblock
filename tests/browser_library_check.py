@@ -40,6 +40,18 @@ def main():
         assert page.locator('#library-cards .library-card').count()==24
         assert page.locator('#library-page').inner_text()=='Page 1 of 5'
         print('PASS: Default anytime methods=100; event=4 excluded, cards paginated.')
+        page.locator('#library-mf').fill('250')
+        page.locator('#library-catches').fill('800')
+        page.locator('#library-estimate-form button').click()
+        page.wait_for_function("document.querySelector('#library-estimate-status').textContent.includes('Estimates use')")
+        page.locator('#library-search').fill('Rain Squid')
+        page.locator('#library-cards .library-card').first.click()
+        page.locator('#library-detail h2').wait_for()
+        assert '800 catches/hr' in page.locator('#library-detail').inner_text()
+        assert '250 MF' in page.locator('#library-detail').inner_text()
+        assert 'Every modeled drop' in page.locator('#library-detail').inner_text()
+        page.locator('#close-library-detail').click()
+        print('PASS: Optional inputs recalculate cards and matching drop breakdown.')
         page.locator('#library-search').fill('Hound')
         page.locator('#library-count').get_by_text('matching',exact=False).wait_for()
         assert page.locator('#library-cards .library-card').count()>=1
