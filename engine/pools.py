@@ -72,10 +72,11 @@ POOLS = {
 DROPS:dict[str,dict[str,Any]]={}
 def record(mob: str, rows, source=None, note=None):
     DROPS[mob]={'source': source or (WIKI+mob.replace(' ','_')),'note':note,
-                'drops':[dict(name=n,market_id=mid,min_quantity=mn,max_quantity=mx,chance=chance,tier=tier)
-                    for n,mid,mn,mx,chance,tier in rows]}
+                'drops':[dict(name=row[0],market_id=row[1],min_quantity=row[2],max_quantity=row[3],chance=row[4],tier=row[5],
+                              expected_quantity=row[6] if len(row)>6 else (row[2]+row[3])/2)
+                    for row in rows]}
 
-def d(n,mid,mn,mx,p=1,tier='common'):return (n,mid,mn,mx,p,tier)
+def d(n,mid,mn,mx,p=1,tier='common',expected=None):return (n,mid,mn,mx,p,tier,*((expected,) if expected is not None else ()))
 
 record('Squid',[
  d('Ink Sac','INK_SACK',2,3),d('Lily Pad','WATER_LILY',1,2),
@@ -173,6 +174,66 @@ record('Frog Man',[
  d('Clay Ball','CLAY_BALL',1,2),d('Half-Eaten Mushroom',None,1,1),
  d('Aquamarine Dye',None,1,1,1/5_000_000,'jackpot')])
 
+
+# Complete documented BASE item drop tables for ordinary/basic water fishing.
+# Conditional additions are represented with expected quantities where the
+# distribution is not uniform; non-Bazaar items remain explicitly unpriced.
+record('Sea Walker',[
+ d('Rotten Flesh','ROTTEN_FLESH',5,9,1,'common',6.5),
+ d('Raw Cod','RAW_FISH',2,2),d('Lily Pad','WATER_LILY',1,1),
+ d('Aquamarine Dye',None,1,1,1/5_000_000,'jackpot')])
+record('Sea Witch',[
+ d('Raw Salmon','RAW_SALMON',1,3,1,'common',2),
+ d('Lily Pad','WATER_LILY',1,2),
+ d('Tropical Fish','CLOWNFISH',1,1,.2),
+ d('Fairy Armor Piece',None,1,1,.05,'rare'),
+ d('Aquamarine Dye',None,1,1,1/5_000_000,'jackpot')])
+record('Sea Archer',[
+ d('Raw Cod','RAW_FISH',2,2),d('Lily Pad','WATER_LILY',1,1),
+ d('Bone','BONE',8,13,1,'common',10.5),
+ d('Enchanted Bone','ENCHANTED_BONE',1,1,.01,'rare'),
+ d('Bone Dye',None,1,1,1/3_000_000,'jackpot'),
+ d('Aquamarine Dye',None,1,1,1/5_000_000,'jackpot')])
+record('Rider of the Deep',[
+ d('Lily Pad','WATER_LILY',2,2),
+ d('Dark Bait','DARK_BAIT',1,1,.5),
+ d('Enchanted Feather','ENCHANTED_FEATHER',1,1,.5),
+ d('Enchanted Rotten Flesh','ENCHANTED_ROTTEN_FLESH',1,1,.5),
+ d('Sponge','SPONGE',1,1,.2),
+ d('Magnet VI book',None,1,1,.02,'rare'),
+ d('Aquamarine Dye',None,1,1,1/5_000_000,'jackpot')])
+record('Catfish',[
+ d('Raw Cod','RAW_FISH',20,20),d('Raw Salmon','RAW_SALMON',10,10),
+ d('Pufferfish','PUFFERFISH',5,5),d('Tropical Fish','CLOWNFISH',2,2),
+ d('Lily Pad','WATER_LILY',2,3),d('Sponge','SPONGE',1,1,.2),
+ d('Frail VI book',None,1,1,.01,'rare'),
+ d('Aquamarine Dye',None,1,1,1/2_500_000,'jackpot')])
+record('Sea Leech',[
+ d('Raw Cod','RAW_FISH',10,10),d('Lily Pad','WATER_LILY',3,4),
+ d('Tropical Fish','CLOWNFISH',2,2),d('Sponge','SPONGE',1,1,.4),
+ d('Spiked Hook VI book',None,1,1,.02,'rare'),
+ d('Aquamarine Dye',None,1,1,1/2_500_000,'jackpot')])
+record('Guardian Defender',[
+ d('Raw Cod','RAW_FISH',15,15),d('Lily Pad','WATER_LILY',5,7,1,'common',6.1),
+ d('Sponge','SPONGE',1,1),
+ d('Enchanted Prismarine Shard','ENCHANTED_PRISMARINE_SHARD',1,1,.6),
+ d('Enchanted Prismarine Crystals','ENCHANTED_PRISMARINE_CRYSTALS',1,1,.5),
+ d('Lure VI book',None,1,1,.02,'rare'),
+ d('Aquamarine Dye',None,1,1,1/2_500_000,'jackpot')])
+record('Deep Sea Protector',[
+ d('Lily Pad','WATER_LILY',12,15),d('Enchanted Iron Ingot','ENCHANTED_IRON',2,2),
+ d('Tropical Fish','CLOWNFISH',2,3),d('Sponge','SPONGE',1,1),
+ d('Angler VI book',None,1,1,.02,'rare'),
+ d('Aquamarine Dye',None,1,1,1/2_500_000,'jackpot')])
+record('Water Hydra',[
+ d('Raw Cod','RAW_FISH',20,20),d('Raw Salmon','RAW_SALMON',2,2),
+ d('Pufferfish','PUFFERFISH',2,2),d('Tropical Fish','CLOWNFISH',2,2),
+ d('Sponge','SPONGE',5,5),d('Lily Pad','WATER_LILY',16,18,1,'common',17),
+ d('Fish Affinity Talisman',None,1,1,.30,'rare'),
+ d('Water Hydra Head',None,1,1,.14,'rare'),
+ d('Aquamarine Dye',None,1,1,1/50_000,'jackpot')],
+ note='One hooked Water Hydra splits at half health; both Hydras can drop items if killed. Two kills per catch is conditional.')
+
 # Drop data covers only individually checked pages. Never imply the entire pool is valued.
 REVIEW_DATE='2026-11-10'
 
@@ -196,7 +257,7 @@ def rarity_weighted_pool(pool_id:str, *, fishing_level=50, tracking=0,
     if pool_id not in POOLS: raise ValueError('Unknown fishing pool')
     fishing_level=bounded_number(fishing_level,'Fishing level',0,60)
     tracking=bounded_number(tracking,'Tracking',0,300)
-    if bait not in ('NONE','FISH_BAIT','SPIKED_BAIT','LIGHT_BAIT','DARK_BAIT','WHALE_BAIT','HOTSPOT_BAIT','WOODEN_BAIT'):
+    if bait not in ('NONE','FISH_BAIT','SPIKED_BAIT','LIGHT_BAIT','DARK_BAIT','WHALE_BAIT','HOTSPOT_BAIT','WOODEN_BAIT','MINNOW_BAIT'):
         raise ValueError('Unsupported bait')
     if time_of_day not in ('day','night'):raise ValueError('Time must be day or night')
     if hook not in ('NONE','COMMON_HOOK','PUDDLE_JUMPER_HOOK','HOTSPOT_HOOK'):
@@ -260,9 +321,14 @@ def project_pool(params:dict, prices:dict, *, prices_live:bool=False):
     # is explicitly labelled unverified and cannot produce a verified full profit.
     manual=params.get('manual_item_prices',{})
     if not isinstance(manual,dict):raise ValueError('Manual prices must be a dictionary')
+    squid_pet=bool(params.get('squid_pet',False))
+    natural_squids=bounded_number(params.get('natural_squids_per_hour',0),'Natural squids/hour',0,100000)
+    hydra_kills=bounded_number(params.get('hydra_kills_per_catch',1),'Hydra kills/catch',1,2)
     for mob in loot:
         spawn_count=total_expected*mob['probability']
-        entry={'name':mob['name'],'probability':mob['probability'],'expected_per_hour':spawn_count,
+        kills=spawn_count+(natural_squids if mob['name']=='Squid' else 0)
+        if mob['name']=='Water Hydra':kills*=hydra_kills
+        entry={'name':mob['name'],'probability':mob['probability'],'expected_per_hour':spawn_count,'expected_kills_per_hour':kills,
                'base_weight':mob['base_weight'],'modified_weight':mob['modified_weight'],
                'has_drop_table':mob['has_drop_table'],'drops':[],'source':mob['source']}
         drop_info=DROPS.get(mob['name'])
@@ -270,8 +336,8 @@ def project_pool(params:dict, prices:dict, *, prices_live:bool=False):
             if spawn_count>0:unmodelled.append(mob['name'])
         else:
             for d in drop_info['drops']:
-                per_mob=(d['min_quantity']+d['max_quantity'])/2*d['chance']
-                qty=spawn_count*per_mob
+                per_mob=d['expected_quantity']*d['chance']
+                qty=kills*per_mob*(2 if squid_pet and mob['name']=='Squid' else 1)
                 price=None;price_type=None
                 # Bazaar prices are player INSTANT SELL for drops, and no price
                 # is inferred for AH items. Manual item prices keyed by exact item name.
@@ -295,7 +361,7 @@ def project_pool(params:dict, prices:dict, *, prices_live:bool=False):
                     elif d['tier']=='rare':base_rare+=val
                     else:subtotal+=val
                 entry['drops'].append({'name':d['name'],'market_id':d['market_id'],
-                           'base_chance':d['chance'],'expected_units':qty,
+                           'base_chance':d['chance'],'expected_quantity_per_kill':d['expected_quantity'], 'expected_units':qty,
                            'tier':d['tier'],'unit_price':price,'price_source':price_type,'expected_coins':val,
                            'source':drop_info['source']})
         rows.append(entry)
@@ -325,7 +391,7 @@ def project_pool(params:dict, prices:dict, *, prices_live:bool=False):
       'has_complete_loot':not (unpriced or unmodelled),
       'is_full_method_profit':False, 'prices_live':prices_live,
       'warnings':['Partial financial coverage: prices are missing and/or full loot behavior is unmodelled.',
-                  'Base drop rates only. Magic Find, Looting, pet bonuses, charm shards, loot-sharing and actual kill time not applied.',
+                  'Base drop rates only. Squid Pet double drops on Squids are applied when enabled; Magic Find, Looting, other pets, charm shards, loot-sharing and actual kill time are not applied.',
                   'Bait cost is known only when priced; full net profit is deliberately unavailable.',
                   'Jackpot expected value is shown separately and not treated as recurring revenue.'],
       'sources':{'pool':SEA_SOURCE,'tracking':TRACKING_SOURCE}}
