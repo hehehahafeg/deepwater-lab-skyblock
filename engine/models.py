@@ -81,6 +81,7 @@ def calculate_squid(params: dict, prices: dict, *, prices_live: bool = False) ->
         "other_common_weight": BASE_OTHER_WEIGHT,  # Wiki Sea Walker weight, not a player stat.
         "fishing_level": bounded_number(params.get("fishing_level", 50), "Fishing level", 1, 50),
         "tracking": bounded_number(params.get("tracking", 0), "Tracking", 0, 300),
+        "time_of_day": str(params.get("time_of_day", "day")),
         "hydra_kills_per_catch": bounded_number(params.get("hydra_kills_per_catch", 2), "Hydra kills per catch", 1, 2),
         "natural_spawn_efficiency": bounded_number(params.get("natural_spawn_efficiency", 60), "Natural spawn efficiency", 0, 100),
         "bait_saved_percent": bounded_number(params.get("bait_saved_percent", 10), "Bait conservation", 0, 100),
@@ -93,6 +94,8 @@ def calculate_squid(params: dict, prices: dict, *, prices_live: bool = False) ->
     for key in ("squid_hat", "common_hook", "squid_pet", "rain", "pay_rain"):
         p[key] = bool(params.get(key, {"squid_hat": True, "common_hook": True, "squid_pet": True, "rain": True, "pay_rain": True}[key]))
     p["bait"] = str(params.get("bait", "FISH_BAIT"))
+    if p["time_of_day"] not in ("day", "night"):
+        raise ValueError("Time of day must be day or night")
     if p["bait"] not in ("FISH_BAIT", "SPIKED_BAIT", "MINNOW_BAIT", "NONE", "LIGHT_BAIT", "DARK_BAIT", "WHALE_BAIT"):
         raise ValueError("Unsupported bait choice")
 
@@ -102,7 +105,7 @@ def calculate_squid(params: dict, prices: dict, *, prices_live: bool = False) ->
     # Use the complete eligible pool, including Fishing unlocks and Tracking.
     from engine.pools import rarity_weighted_pool, project_pool
     weighted = rarity_weighted_pool("basic_water", fishing_level=p["fishing_level"], tracking=p["tracking"],
-        bait=p["bait"], hook="COMMON_HOOK" if p["common_hook"] else "NONE", squid_hat=p["squid_hat"])
+        bait=p["bait"], time_of_day=p["time_of_day"], hook="COMMON_HOOK" if p["common_hook"] else "NONE", squid_hat=p["squid_hat"])
     share = next(row["probability"] for row in weighted if row["name"] == "Squid")
     fished_squids = total_sc * share
     # Wiki: 66.6% chance for 1–2 natural squids every 11s, conditional on cap.
@@ -150,7 +153,8 @@ def calculate_squid(params: dict, prices: dict, *, prices_live: bool = False) ->
         "pool": "basic_water", "reels_per_hour": p["reels_per_hour"],
         "sea_creature_chance": p["sea_creature_chance"], "double_hook_chance": p["double_hook_chance"],
         "fishing_level": p["fishing_level"], "tracking": p["tracking"],
-        "bait": p["bait"], "hook": "COMMON_HOOK" if p["common_hook"] else "NONE",
+        "bait": p["bait"], "time_of_day": p["time_of_day"],
+        "hook": "COMMON_HOOK" if p["common_hook"] else "NONE",
         "squid_hat": p["squid_hat"], "squid_pet": p["squid_pet"],
         "natural_squids_per_hour": natural_squids,
         "hydra_kills_per_catch": p["hydra_kills_per_catch"],
