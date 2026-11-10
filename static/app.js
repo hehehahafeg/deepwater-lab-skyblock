@@ -325,6 +325,58 @@ const helmetComparison=`<form id="helmet-comparison" class="method-section">
  <p class="subtle">Partial live Bazaar comparison of fished creatures. Natural rain squid, unpriced loot and non-creature catches are outside these totals.</p>
  <output aria-live="polite"></output>
  </form>`;
+function setupComparison(form,strategy){
+ const result=form.querySelector('output');
+ form.addEventListener('submit',async e=>{
+  e.preventDefault();
+  const button=e.submitter;
+  button.disabled=true;
+  try{
+   const rows=[...form.querySelectorAll('fieldset')].map(group=>Object.fromEntries(
+    [...group.querySelectorAll('input,select')].map(input=>[input.name,
+     input.type==='checkbox'?input.checked:input.type==='number'?Number(input.value):input.value])));
+   if(!strategy.comparison_pool){
+    const rates=rows.map(r=>(r.gross-r.cost)*60/r.minutes);
+    result.textContent=`Measured net/hr · Setup A ${short(rates[0])} · Setup B ${short(rates[1])} · B − A ${short(rates[1]-rates[0])} coins/hr`;
+    return;
+   }
+   result.textContent='Calculating both setups…';
+   const data=await post('/api/strategies/'+encodeURIComponent(strategy.id)+'/compare',{setups:rows});
+   const valued=(r,value)=>r.prices_live&&r.priced_drop_entries?short(value):'Unavailable';
+   result.innerHTML=`<div class="table-scroll"><table class="data-table"><thead><tr>
+    <th>Setup</th><th>Sea creatures/hr</th><th>${esc(strategy.target||'Target')}/hr</th><th>Ordinary loot/hr</th><th>Rare EV/hr</th><th>Bait/hr</th><th>Priced net/hr</th><th>Priced jackpot EV/hr</th><th>Missing drop prices / tables</th>
+    </tr></thead><tbody>${data.map((r,i)=>{
+     const target=r.creatures.find(m=>m.name===strategy.target);
+     return `<tr><th>${i===0?'A':'B'}</th><td>${fmt(r.creature_rate)}</td><td>${target?fmt(target.expected_per_hour):'—'}</td>
+      <td>${valued(r,r.known_common_revenue)}</td><td>${valued(r,r.known_rare_base_ev)}</td><td>${short(r.bait_cost)}</td>
+      <td>${valued(r,r.known_subtotal_after_bait)}</td><td>${valued(r,r.known_jackpot_base_ev)}</td><td>${r.unpriced.length} / ${r.unmodelled.length}</td></tr>`;
+    }).join('')}</tbody></table></div>`;
+  }catch(error){result.textContent=error.message;}
+  finally{button.disabled=false;}
+ });
+}
+function comparisonMarkup(strategy){
+ const pool=strategy.comparison_pool;
+ const hotspot=pool?.pool.startsWith('hotspot');
+ const select=(name,label,options,chosen)=>`<label>${label}<select name="${name}">${options.map(value=>`<option ${value===chosen?'selected':''}>${value}</option>`).join('')}</select></label>`;
+ const number=(name,label,value,min,max,step='any')=>`<label>${label}<input required type="number" name="${name}" value="${value}" min="${min}" max="${max}" step="${step}"></label>`;
+ const fields=i=>{
+  if(!pool)return number('minutes','Minutes fished','',0.01,100000)+number('gross','Loot sale value','',0,1e15)+number('cost','Total run costs','',0,1e15);
+  const hook=hotspot?'HOTSPOT_HOOK':strategy.target==='Puddle Jumper'?'PUDDLE_JUMPER_HOOK':strategy.target==='Squid'?'COMMON_HOOK':'NONE';
+  return number('reels_per_hour','Reels/hour',1050,0,5000)+number('sea_creature_chance','Effective SCC (%)',100,0,100)
+   +number('double_hook_chance','Double Hook (%)',30,0,100)+number('fishing_level','Fishing level',50,0,60)
+   +number('tracking','Tracking',0,0,300)+number('magic_find','Magic Find',0,0,5000)+number('looting_level','Looting',0,0,5,1)
+   +select('bait','Bait',['NONE','FISH_BAIT','SPIKED_BAIT','LIGHT_BAIT','DARK_BAIT','WHALE_BAIT','HOTSPOT_BAIT','WOODEN_BAIT','MINNOW_BAIT'],hotspot?'HOTSPOT_BAIT':'NONE')
+   +select('time_of_day','Time of day',['day','night'],'day')
+   +select('hook','Hook',['NONE','COMMON_HOOK','PUDDLE_JUMPER_HOOK','HOTSPOT_HOOK'],i===0?hook:'NONE')
+   +(hotspot?number('hotspot_override_percent','Hotspot replacement (%)',i===0?85:15,0,85):'')
+   +`<label><input type="checkbox" name="squid_hat" ${i===0&&['Squid','Inkling'].includes(strategy.target)?'checked':''}> Squid Hat</label>`;
+ };
+ return `<form id="method-comparison" class="method-section"><h3>Compare two setups</h3>
+  <p class="subtle">${pool?'Hypothetical creature projections use documented catch weights and one live Bazaar snapshot. Example inputs are editable. Priced net subtracts bait and excludes jackpots, unpriced drops and non-creature loot.':'This method needs its own catch or reward model. Compare measured runs using the actual loot value and costs for each setup.'}</p>
+  ${[0,1].map(i=>`<fieldset><legend>Setup ${i===0?'A':'B'}</legend><div class="form-row">${fields(i)}</div></fieldset>`).join('')}
+  <button class="btn btn-outline">Compare setups</button><output aria-live="polite"></output></form>`;
+}
 async function showStrategy(id){
  const el=$('library-detail'); el.hidden=false;
  el.innerHTML='<p>Loading method setup and live market context…</p>';
@@ -342,7 +394,7 @@ async function showStrategy(id){
   <div class="method-section">${optimizedProfitMarkup(s)}</div>
   <div class="method-section"><h3>What you're farming</h3><p class="subtle">${esc(s.objective)}</p><p class="subtle">${esc(s.mechanics_note)}</p></div>
   <div class="method-section"><h3>High-end setup · Every slot</h3><div class="slot-grid">${slotMarkup(s.best_documented_setup)}</div></div>
-  ${s.target==='Inkling'&&s.region==='The Park'?helmetComparison:''}
+  ${s.target==='Inkling'&&s.region==='The Park'?helmetComparison:comparisonMarkup(s)}
   <div class="method-section"><h3>Hypothetical / experimental setup</h3><strong>${esc(s.experiment.name)}</strong><p class="subtle">${esc(s.experiment.reason)}</p><p class="subtle">Test protocol: ${esc(s.experiment.protocol)}</p><span class="library-chip warn">NOT VERIFIED</span></div>
   <div class="method-section"><h3>Fishing tutorial</h3><ol>${s.tutorial.map(x=>`<li>${esc(x)}</li>`).join('')}</ol></div>
   <div class="method-section"><h3>Available live price observations (not full profit)</h3><p class="subtle">${ob.market_live?'Live Bazaar snapshot;':'Live Bazaar unavailable;'} market values alone do not establish drops/hour. AH-only items remain unpriced.</p>${marketInfo}</div>
@@ -350,6 +402,8 @@ async function showStrategy(id){
   $('close-library-detail').addEventListener('click',()=>{el.hidden=true;el.innerHTML='';});
   const comparison=$('helmet-comparison');
   if(comparison)setupHelmetComparison(comparison);
+  const genericComparison=$('method-comparison');
+  if(genericComparison)setupComparison(genericComparison,s);
   el.scrollIntoView({behavior:'smooth',block:'start'});
  }catch(e){el.innerHTML=`<div class="warning-box">Couldn't open this method: ${esc(e.message)}</div>`;}
 }

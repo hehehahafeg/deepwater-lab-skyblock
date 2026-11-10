@@ -6,7 +6,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from engine.market import Bazaar
 from engine.models import CATALOG, SQUID_SOURCES, sensitivity, rank_methods, payback_hours
-from engine.pools import public_catalog, project_pool
+from engine.pools import POOLS, public_catalog, project_pool
 from engine.strategies import list_strategies, get_strategy, market_observations, STRATEGIES
 
 ROOT=Path(__file__).resolve().parent
@@ -53,6 +53,7 @@ def strategy_detail(strategy_id:str):
     detail=get_strategy(strategy_id)
     if not detail:
         raise HTTPException(status_code=404,detail='Unknown strategy')
+    detail = dict(detail, comparison_pool=strategy_comparison_pool(detail))
     market_snapshot=market.get()
     observations=market_observations(detail,market_snapshot.get('products',{}),live=market_snapshot.get('live',False))
     return {'strategy':detail,'market_observations':observations,
@@ -105,6 +106,53 @@ def compare_helmets(payload: PoolRequest):
             )
             for name in ('squid_hat', 'full_armor')
         }
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+
+
+def strategy_comparison_pool(strategy):
+    pool = strategy['pool']
+    if (pool not in POOLS or strategy['availability'] != 'anytime'
+            or strategy['style'] in ('hunting', 'treasure', 'trophy')):
+        return None
+    base = None
+    if pool == 'hotspot_lava':
+        base = 'crimson_lava'
+    if pool == 'hotspot_water':
+        base = {
+            'The Park': 'basic_water', 'Spider’s Den': 'basic_water',
+            'Backwater Bayou': 'bayou', 'Lotus Atoll': 'lotus',
+            'Torrhus Canyon': 'torrhus',
+        }.get(strategy['region'])
+        if base is None:
+            return None
+    return dict(pool=pool, **({'base_pool': base} if base else {}))
+
+
+class StrategyComparisonRequest(BaseModel):
+    setups: list[dict] = Field(min_length=2, max_length=2)
+    use_live_market: bool = True
+
+
+@app.post('/api/strategies/{strategy_id}/compare')
+def compare_strategy(strategy_id: str, payload: StrategyComparisonRequest):
+    strategy = get_strategy(strategy_id)
+    if strategy is None:
+        raise HTTPException(status_code=404, detail='Unknown strategy')
+    pool = strategy_comparison_pool(strategy)
+    if pool is None:
+        raise HTTPException(status_code=422, detail='No applicable creature model. Use measured runs to compare this method.')
+    snapshot = market.get() if payload.use_live_market else {'live': False, 'products': {}}
+    allowed = {'reels_per_hour', 'sea_creature_chance', 'double_hook_chance', 'fishing_level',
+               'tracking', 'magic_find', 'looting_level', 'bait', 'time_of_day', 'hook',
+               'hotspot_override_percent', 'squid_hat', 'novice_trophy_fisher',
+               'adept_trophy_fisher', 'bait_saved_percent', 'hydra_kills_per_catch'}
+    try:
+        return [
+            project_pool(dict({key: value for key, value in setup.items() if key in allowed}, **pool), snapshot['products'] if snapshot['live'] else {},
+                         prices_live=snapshot['live'])
+            for setup in payload.setups
+        ]
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
 
