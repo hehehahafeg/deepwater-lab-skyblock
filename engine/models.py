@@ -85,6 +85,8 @@ def calculate_squid(params: dict, prices: dict, *, prices_live: bool = False) ->
         "hydra_kills_per_catch": bounded_number(params.get("hydra_kills_per_catch", 2), "Hydra kills per catch", 1, 2),
         "squid_pet_level": bounded_number(params.get("squid_pet_level", 100), "Squid Pet level", 1, 100),
         "squid_pet_rarity": str(params.get("squid_pet_rarity", "LEGENDARY")).upper(),
+        "magic_find": bounded_number(params.get("magic_find", 0), "Effective Magic Find", 0, 5000),
+        "looting_level": bounded_number(params.get("looting_level", 0), "Looting level", 0, 5),
         "natural_spawn_efficiency": bounded_number(params.get("natural_spawn_efficiency", 60), "Natural spawn efficiency", 0, 100),
         "bait_saved_percent": bounded_number(params.get("bait_saved_percent", 10), "Bait conservation", 0, 100),
         "ink_yield_multiplier": bounded_number(params.get("ink_yield_multiplier", 1), "Ink yield multiplier", 0, 10),
@@ -96,6 +98,8 @@ def calculate_squid(params: dict, prices: dict, *, prices_live: bool = False) ->
     for key in ("squid_hat", "common_hook", "squid_pet", "rain", "pay_rain"):
         p[key] = bool(params.get(key, {"squid_hat": True, "common_hook": True, "squid_pet": True, "rain": True, "pay_rain": True}[key]))
     p["bait"] = str(params.get("bait", "FISH_BAIT"))
+    if p["looting_level"] != int(p["looting_level"]):
+        raise ValueError("Looting level must be a whole number")
     if p["squid_pet_rarity"] not in ("COMMON", "UNCOMMON", "RARE", "EPIC", "LEGENDARY"):
         raise ValueError("Unknown Squid Pet rarity")
     if p["time_of_day"] not in ("day", "night"):
@@ -121,12 +125,16 @@ def calculate_squid(params: dict, prices: dict, *, prices_live: bool = False) ->
     pet_mult = 1 + pet_max_chance[p["squid_pet_rarity"]]*p["squid_pet_level"]/100 if p["squid_pet"] else 1
     # 2–3 ink and 1–2 Lily Pad per Wiki Squid. Looting/additional game modifiers
     # unvalidated; user-controlled ink yield multiplier is explicitly an assumption.
-    ink_count = total_squids * 2.5 * pet_mult * p["ink_yield_multiplier"]
-    lily_count = total_squids * 1.5 * pet_mult
+    # The detailed pool projection applies the 15%-per-Looting-level expected
+    # quantity factor to standard common drops. Match that calculation here.
+    looting_mult = 1 + 0.15 * p["looting_level"]
+    ink_count = total_squids * 2.5 * pet_mult * looting_mult * p["ink_yield_multiplier"]
+    lily_count = total_squids * 1.5 * pet_mult * looting_mult
     # Decompose expected ink output. This does not invent an unverified Looting multiplier.
     base_ink_fished = fished_squids * 2.5
     base_ink_natural = natural_squids * 2.5
     ink_after_pet = (base_ink_fished + base_ink_natural) * pet_mult
+    ink_after_looting = ink_after_pet * looting_mult
     spent_bait = 0 if p["bait"] == "NONE" else p["reels_per_hour"] * (1 - p["bait_saved_percent"] / 100)
 
     ink_price = p["manual_ink_price"] if p["manual_ink_price"] > 0 else _lookup(prices, "INK_SACK", "instant_sell")
@@ -148,7 +156,7 @@ def calculate_squid(params: dict, prices: dict, *, prices_live: bool = False) ->
     warnings = [
         "PARTIAL LOOT: other sea creatures, treasure, rare dyes, squid pets, inkling and conditional drops are not priced.",
         "POOL MODEL: Wiki weights, Fishing unlocks and applicable modifiers are calculated automatically. Sea Walker is the only other COMMON basic-water creature.",
-        "Natural-spawn efficiency and any extra ink yield from Looting are not independently validated; extra yield defaults to 1×.",
+        "Natural-spawn efficiency remains an assumption. Looting and Magic Find use the source-modelled probability rules, but gameplay calibration is still needed; unknown extra yield defaults to 1×.",
     ]
     if not prices_live:
         warnings.append("Live Bazaar prices not verified; any manual values are user assumptions.")
@@ -163,7 +171,7 @@ def calculate_squid(params: dict, prices: dict, *, prices_live: bool = False) ->
         "squid_hat": p["squid_hat"], "squid_pet": p["squid_pet"], "squid_pet_multiplier": pet_mult,
         "natural_squids_per_hour": natural_squids,
         "hydra_kills_per_catch": p["hydra_kills_per_catch"],
-        "magic_find": params.get("magic_find", 0), "looting_level": params.get("looting_level", 0),
+        "magic_find": p["magic_find"], "looting_level": p["looting_level"],
         "bait_saved_percent": p["bait_saved_percent"],
         "manual_bait_price": p["manual_bait_price"],
     }, prices, prices_live=prices_live)
@@ -177,7 +185,7 @@ def calculate_squid(params: dict, prices: dict, *, prices_live: bool = False) ->
         "inputs": p, "squid_share": share,
         "fished_squids_per_hour": fished_squids, "natural_squids_per_hour": natural_squids,
         "sea_creatures_per_hour": total_sc, "ink_per_hour": ink_count, "lily_pads_per_hour": lily_count,
-        "ink_breakdown": {"base_ink_from_fished_squids": base_ink_fished, "base_ink_from_natural_squids": base_ink_natural, "squid_pet_multiplier": pet_mult, "ink_after_pet": ink_after_pet, "unverified_extra_multiplier": p["ink_yield_multiplier"], "unit": "regular Ink Sac equivalents", "base_ink_per_squid": 2.5},
+        "ink_breakdown": {"base_ink_from_fished_squids": base_ink_fished, "base_ink_from_natural_squids": base_ink_natural, "squid_pet_multiplier": pet_mult, "ink_after_pet": ink_after_pet, "looting_expected_multiplier": looting_mult, "ink_after_looting": ink_after_looting, "unverified_extra_multiplier": p["ink_yield_multiplier"], "unit": "regular Ink Sac equivalents", "base_ink_per_squid": 2.5},
         "bait_used_per_hour": spent_bait, "bait_unit_price": bait_price,
         "ink_unit_price": ink_price, "lily_unit_price": lily_price,
         "gross_ink": income_ink, "gross_lily": income_lily,
