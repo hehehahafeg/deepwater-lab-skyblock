@@ -15,7 +15,7 @@ const api = async(path, options) => {
 const post = (path, obj) => api(path,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(obj)});
 const MARKET_ITEMS = ['INK_SACK','WATER_LILY','FISH_BAIT','SPIKED_BAIT','MINNOW_BAIT','ENCHANTED_INK_SACK','HOTSPOT_BAIT','HOT_BAIT','SHARK_BAIT'];
 const shortMethods = [
-  {id:'birch_squid',name:'Birch Park · Squid density',region:'The Park',status:'partial-model',reason:'Ink model only. Other loot unmodelled.',movement:'fixed'},
+  {id:'birch_squid',name:'Birch Park · Squid density',region:'The Park',status:'partial-model',reason:'All basic-water creatures included. AH/treasure still incomplete.',movement:'fixed'},
   {id:'bayou_hotspot',name:'Bayou hotspot fishing',region:'Backwater Bayou',status:'requires-model',reason:'Complete creature drops missing.',movement:'small'},
   {id:'stationary_lava',name:'Stationary lava fishing',region:'Crimson Isle',status:'requires-model',reason:'Thunder Flash books and drops not yet validated.',movement:'fixed'},
   {id:'atoll_puddle',name:'Lotus Atoll · Puddle Jumper',region:'Lotus Atoll',status:'requires-model',reason:'Requires validated loot catalog.',movement:'small'}
