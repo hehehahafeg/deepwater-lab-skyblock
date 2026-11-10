@@ -288,6 +288,43 @@ async function loadLibrary(){
  }catch(e){$('hypothetical-cards').textContent='Hypotheses could not load.';$('library-count').textContent='Could not load strategy catalog: '+e.message;}
 }
 const slotMarkup=(s)=>Object.entries(LIBRARY_SLOTS).map(([key,label])=>`<div class="slot"><span class="k">${esc(label)}</span><span class="v">${esc(s[key]||'Not yet established')}</span></div>`).join('');
+function setupHelmetComparison(form){
+ const results=form.querySelector('output');
+ async function compare(){
+  results.textContent='Calculating both setups…';
+  try{
+   const params=Object.fromEntries([...new FormData(form)].map(([key,value])=>[key,Number(value)]));
+   const data=await post('/api/pools/compare-helmets',{params:{...params,bait:'HOTSPOT_BAIT',hook:'HOTSPOT_HOOK'}});
+   const rows=[
+    ['Squid Hat + 3/4 Magma Lord',data.squid_hat],
+    ['Full Magma Lord',data.full_armor],
+   ];
+   results.innerHTML=`<div class="table-scroll"><table class="data-table">
+    <thead><tr><th>Setup</th><th>Squid/hr</th><th>Inkling/hr</th><th>Priced ordinary loot/hr</th><th>Priced rare EV/hr</th><th>Bait/hr</th><th>Priced net/hr</th><th>Jackpot EV/hr (separate)</th></tr></thead>
+    <tbody>${rows.map(([label,r])=>{
+     const rate=name=>r.creatures.find(mob=>mob.name===name)?.expected_per_hour??0;
+     const priced=value=>r.prices_live&&r.priced_drop_entries>0?short(value):'Unavailable';
+     const jackpot=r.priced.some(drop=>r.creatures.some(mob=>mob.name===drop.mob&&mob.drops.some(item=>item.name===drop.drop&&item.tier==='jackpot')));
+     return `<tr><th>${label}</th><td>${fmt(rate('Squid'))}</td><td>${fmt(rate('Inkling'))}</td>
+      <td>${priced(r.known_common_revenue)}</td><td>${priced(r.known_rare_base_ev)}</td><td>${short(r.bait_cost)}</td>
+      <td>${priced(r.known_subtotal_after_bait)}</td><td>${jackpot?priced(r.known_jackpot_base_ev):'Unpriced'}</td></tr>`;
+    }).join('')}</tbody></table></div>`;
+  }catch(e){results.textContent=e.message;}
+ }
+ form.addEventListener('submit',e=>{e.preventDefault();compare();});
+ compare();
+}
+const helmetComparison=`<form id="helmet-comparison" class="method-section">
+ <h3>Compare Squid Hat vs. full Magma Lord</h3>
+ <p class="subtle">Equal example rates isolate the hat's catch-weight bonus. Enter your effective stats and measured reels/hour for each setup to compare armor tradeoffs. Both use Hotspot Hook and Hotspot Bait.</p>
+ ${[['squid_hat','Squid Hat'],['full_armor','Full Magma Lord']].map(([key,label])=>`<fieldset><legend>${label}</legend><div class="form-row">
+  ${[['reels','Reels/hour',1050,5000],['scc','Sea Creature Chance (%)',100,100],['dh','Double Hook Chance (%)',30,100]].map(([field,name,value,max])=>`<label>${name}<input name="${key}_${field}" type="number" min="0" max="${max}" step="any" value="${value}" required></label>`).join('')}
+ </div></fieldset>`).join('')}
+ <label>Hotspot replacement chance (%) <input name="hotspot_override_percent" type="number" min="0" max="85" step="any" value="85" required></label>
+ <button class="btn btn-outline">Recalculate both setups</button>
+ <p class="subtle">Partial live Bazaar comparison of fished creatures. Natural rain squid, unpriced loot and non-creature catches are outside these totals.</p>
+ <output aria-live="polite"></output>
+ </form>`;
 async function showStrategy(id){
  const el=$('library-detail'); el.hidden=false;
  el.innerHTML='<p>Loading method setup and live market context…</p>';
@@ -305,11 +342,14 @@ async function showStrategy(id){
   <div class="method-section">${optimizedProfitMarkup(s)}</div>
   <div class="method-section"><h3>What you're farming</h3><p class="subtle">${esc(s.objective)}</p><p class="subtle">${esc(s.mechanics_note)}</p></div>
   <div class="method-section"><h3>High-end setup · Every slot</h3><div class="slot-grid">${slotMarkup(s.best_documented_setup)}</div></div>
+  ${s.target==='Inkling'&&s.region==='The Park'?helmetComparison:''}
   <div class="method-section"><h3>Hypothetical / experimental setup</h3><strong>${esc(s.experiment.name)}</strong><p class="subtle">${esc(s.experiment.reason)}</p><p class="subtle">Test protocol: ${esc(s.experiment.protocol)}</p><span class="library-chip warn">NOT VERIFIED</span></div>
   <div class="method-section"><h3>Fishing tutorial</h3><ol>${s.tutorial.map(x=>`<li>${esc(x)}</li>`).join('')}</ol></div>
   <div class="method-section"><h3>Available live price observations (not full profit)</h3><p class="subtle">${ob.market_live?'Live Bazaar snapshot;':'Live Bazaar unavailable;'} market values alone do not establish drops/hour. AH-only items remain unpriced.</p>${marketInfo}</div>
   <div class="method-section"><h3>Mechanic sources</h3><div class="source-list">${s.sources.map((u,i)=>`<a href="${esc(u)}" target="_blank" rel="noopener noreferrer">Reference ${i+1} ↗</a>`).join('')}</div></div>`;
   $('close-library-detail').addEventListener('click',()=>{el.hidden=true;el.innerHTML='';});
+  const comparison=$('helmet-comparison');
+  if(comparison)setupHelmetComparison(comparison);
   el.scrollIntoView({behavior:'smooth',block:'start'});
  }catch(e){el.innerHTML=`<div class="warning-box">Couldn't open this method: ${esc(e.message)}</div>`;}
 }
