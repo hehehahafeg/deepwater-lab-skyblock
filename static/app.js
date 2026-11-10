@@ -62,31 +62,67 @@ function renderMethods(){
 async function loadMethods(){try{let result=await api('/api/methods');state.methods=result.catalog||[];state.server=true;}catch(err){state.methods=shortMethods;}renderMethods();}
 
 function getParams(){return {
- reels_per_hour:readNum('reels',1050),sea_creature_chance:readNum('scc',100),double_hook_chance:readNum('dh',30),other_common_weight:readNum('otherCommon',800),ink_yield_multiplier:1,
+ reels_per_hour:readNum('reels',1050),sea_creature_chance:readNum('scc',100),double_hook_chance:readNum('dh',30),ink_yield_multiplier:1,fishing_level:readNum('fishingLevel',50),tracking:readNum('trackingStat',0),hydra_kills_per_catch:readNum('hydraKills',2),time_of_day:$('fishingTime').value,
  squid_hat:$('squidHat').checked,common_hook:$('commonHook').checked,squid_pet:$('squidPet').checked,rain:$('rain').checked,pay_rain:$('payRain').checked,
  natural_spawn_efficiency:readNum('spawnEff',60),bait_saved_percent:readNum('baitSaved',10),bait:$('bait').value
 };}
 function getOverrides(){const o={};if(readNum('inkPrice')>0)o.INK_SACK={instant_sell:readNum('inkPrice'),instant_buy:readNum('inkPrice')};if(readNum('lilyPrice')>0)o.WATER_LILY={instant_sell:readNum('lilyPrice'),instant_buy:readNum('lilyPrice')};if(readNum('baitPrice')>0 && $('bait').value!=='NONE')o[$('bait').value]={instant_buy:readNum('baitPrice'),instant_sell:readNum('baitPrice')};return o;}
 const moneyRow=(label,n,sign='')=>`<div><span>${esc(label)}</span><strong>${n===null?'UNPRICED':sign+money(n)}</strong></div>`;
+
+// All ten ordinary-water creatures are accounted for separately.
+// A missing auction price remains UNPRICED rather than being silently counted as 0.
+function renderPoolBreakdown(pool){
+  if(!pool) return '';
+  const grouped=new Map();
+  for(const creature of (pool.creatures||[])){
+    for(const drop of (creature.drops||[])){
+      if(!grouped.has(drop.name)) grouped.set(drop.name,{name:drop.name,units:0,coins:0,priced:true,price:drop.unit_price,tier:drop.tier});
+      const item=grouped.get(drop.name);
+      item.units+=drop.expected_units||0;
+      if(drop.expected_coins===null || drop.expected_coins===undefined) item.priced=false;
+      else item.coins+=drop.expected_coins;
+      if(drop.tier==='jackpot') item.tier='jackpot';
+    }
+  }
+  const items=[...grouped.values()].sort((a,b)=>(b.priced?b.coins:0)-(a.priced?a.coins:0));
+  const itemRows=items.map(item=>'<tr><td>'+esc(item.name)+(item.tier==='jackpot'?' <span class="library-chip warn">JACKPOT</span>':'')+'</td><td>'+fmt(item.units)+'</td><td>'+(item.priced?short(item.coins):'UNPRICED')+'</td></tr>').join('');
+  const creatures=(pool.creatures||[]).map(creature=>{
+    const drops=(creature.drops||[]).map(drop=>'<div><span>'+esc(drop.name)+' · '+fmt(drop.expected_units)+' / hour'+(drop.tier==='jackpot'?' · jackpot':'')+'</span><strong>'+(drop.expected_coins===null?'UNPRICED':short(drop.expected_coins))+'</strong></div>').join('');
+    return '<details class="creature-loot"><summary><span>'+esc(creature.name)+' <small>'+fmt(creature.expected_per_hour)+' catches/hr'+(creature.expected_kills_per_hour!==creature.expected_per_hour?' · '+fmt(creature.expected_kills_per_hour)+' kills/hr':'')+'</small></span><strong>'+fmt(creature.probability*100)+'%</strong></summary><div class="result-list">'+drops+'</div><a href="'+esc(creature.source)+'" target="_blank" rel="noopener noreferrer">Check source drop table ↗</a></details>';
+  }).join('');
+  const unpriced=(pool.unpriced||[]).length;
+  return '<section class="full-loot"><h3>All basic-water creatures · detailed projection</h3>'
+    +'<p class="loot-note">Base drop probabilities for all 10 unlocked creatures. Item totals include direct enchanted drops where documented. Common and rare priced drops are included in the known subtotal; ultra-rare jackpot EV is separated. Existing raw ink converted into enchanted ink must not be counted twice.</p>'
+    +'<div class="result-list">'
+    +moneyRow('Common Bazaar loot/hour',pool.known_common_revenue)
+    +moneyRow('Priced rare-drop base EV/hour',pool.known_rare_base_ev)
+    +moneyRow('Ultra-rare jackpot EV (not regular income)',pool.known_jackpot_base_ev)
+    +moneyRow('Bait cost/hour',pool.bait_cost)
+    +'<div class="cut"><span>Unpriced drop entries</span><strong>'+money(unpriced)+'</strong></div></div>'
+    +'<details class="loot-details" open><summary>Expected items per hour ('+money(items.length)+' types)</summary><div class="loot-table-wrap"><table class="loot-table"><thead><tr><th>Drop</th><th>Units/hr</th><th>Known value/hr</th></tr></thead><tbody>'+itemRows+'</tbody></table></div></details>'
+    +'<details class="loot-details"><summary>Creature-by-creature catch and drop breakdown ('+money((pool.creatures||[]).length)+')</summary>'+creatures+'</details>'
+    +'<p class="loot-note">'+unpriced+' entries still lack trustworthy live Bazaar or Auction House prices. No full-profit figure is claimed; other fishing catches, Looting and Magic Find may add unmodelled returns.</p></section>';
+}
+
 function renderCalc(r) {
   state.latestCalculation=r;
-  const complete=r.price_complete&&r.modelled_net!==null;
-  const val=complete?short(r.modelled_net):'CANNOT PRICE';
+  const complete=r.priced_creature_net!==null && r.priced_creature_net!==undefined;
+  const val=complete?short(r.priced_creature_net):'BAIT COST UNPRICED';
   $('calc-result').className='';
-  $('calc-result').innerHTML=`<div class="result-main"><div class="result-caption">MODELLED SUBSET · COINS / HOUR</div><div class="result-value" style="color:${complete?'#98ebce':'#eebc84'}">${esc(val)}</div><div class="result-sub">${complete?'Not complete method profit. '+(r.prices_live?'Live Bazaar inputs':'Manual or unverified prices'):'Required input prices are missing. Full profit never calculated.'}</div></div><div class="result-list">
+  $('calc-result').innerHTML=`<div class="result-main"><div class="result-caption">KNOWN PRICED SUBTOTAL · ALL 10 CREATURES · COINS/HOUR</div><div class="result-value" style="color:${complete?'#98ebce':'#eebc84'}">${esc(val)}</div><div class="result-sub">${complete?'Not full method profit. '+(r.prices_live?'Live Bazaar inputs':'Manual or unverified prices'):'Required bait price missing. Full profit is never claimed.'}</div></div><div class="result-list">
   ${moneyRow('Estimated fished Squids/hour',r.fished_squids_per_hour)}${moneyRow('Natural Squids/hour',r.natural_squids_per_hour)}${moneyRow('Squid share of SC pool (%)',Number((r.squid_share*100).toFixed(2)))}
   ${moneyRow('Base ink from fished squids/hour',r.ink_breakdown?.base_ink_from_fished_squids)}${moneyRow('Base ink from natural squids/hour',r.ink_breakdown?.base_ink_from_natural_squids)}${moneyRow('Squid Pet multiplier (automatic)',r.ink_breakdown?.squid_pet_multiplier)}${moneyRow('Ink after Squid Pet/hour',r.ink_breakdown?.ink_after_pet)}${moneyRow('Unverified extra ink multiplier',r.ink_breakdown?.unverified_extra_multiplier)}${moneyRow('Total regular ink equivalents/hour',r.ink_per_hour)}${moneyRow('Ink revenue/hour',r.gross_ink)}${moneyRow('Lily Pad revenue/hour',r.gross_lily)}
   ${moneyRow('Bait cost/hour',r.cost_bait)}${moneyRow('Rain cost/hour',r.cost_rain)}
-  <div class="cut"><span>Modelled net (not full)</span><strong>${complete?short(r.modelled_net):'UNAVAILABLE'}</strong></div>
-  </div><div class="warning-box">◈ ${esc((r.missing||[]).length?'Missing: '+r.missing.join(' · '):'This is a partial model; missing Looting and other drop mechanics are NOT silently estimated.')}<br>${esc(r.warnings?.[1]||'')}</div>
-  ${complete?`<div class="result-list"><div><span>±15% reel rate — lower / upper</span><strong>${short(r.sensitivity.low)} – ${short(r.sensitivity.high)}</strong></div></div>`:''}`;
+  <div class="cut"><span>Priced creature subtotal after bait and rain</span><strong>${complete?short(r.priced_creature_net):'UNAVAILABLE'}</strong></div>
+  </div>${renderPoolBreakdown(r.pool_projection)}<div class="warning-box">◈ ${esc((r.missing||[]).length?'Missing: '+r.missing.join(' · '):'This is a partial model; missing Looting and other drop mechanics are NOT silently estimated.')}<br>${esc(r.warnings?.[1]||'')}</div>
+  ${r.sensitivity.low!==null&&r.sensitivity.high!==null?`<div class="result-list"><div><span>Squid-only ±15% reel rate · lower / upper</span><strong>${short(r.sensitivity.low)} – ${short(r.sensitivity.high)}</strong></div></div>`:''}`;
 }
 async function runCalc(){
  $('calc-result').className='calc-empty';$('calc-result').textContent='Calculating…';
  try{const r=await post('/api/calculate/squid',{params:getParams(),manual_prices:getOverrides()});renderCalc(r);}
  catch(e){$('calc-result').className='';$('calc-result').innerHTML=`<div class="warning-box">Calculation blocked: ${esc(e.message)}. ${state.server?'Correct the input.':'Start the Python backend for verified calculations.'}</div>`;}
 }
-function resetCalc(){for(const [k,v] of [['reels','1050'],['scc','100'],['dh','30'],['otherCommon','800'],['spawnEff','60'],['baitSaved','10'],['inkPrice',''],['lilyPrice',''],['baitPrice','']])$(k).value=v;for(const k of ['squidHat','commonHook','squidPet','rain','payRain'])$(k).checked=true;$('bait').value='FISH_BAIT';$('spawnEffText').textContent='60%';$('calc-result').innerHTML='<div class="calc-empty"><span class="empty-icon">◈</span><h3>No calculation yet</h3><p>Change assumptions and run the simulator.</p></div>';}
+function resetCalc(){for(const [k,v] of [['reels','1050'],['scc','100'],['dh','30'],['fishingLevel','50'],['trackingStat','0'],['spawnEff','60'],['baitSaved','10'],['inkPrice',''],['lilyPrice',''],['baitPrice','']])$(k).value=v;for(const k of ['squidHat','commonHook','squidPet','rain','payRain'])$(k).checked=true;$('bait').value='FISH_BAIT';$('hydraKills').value='2';$('fishingTime').value='day';$('spawnEffText').textContent='60%';$('calc-result').innerHTML='<div class="calc-empty"><span class="empty-icon">◈</span><h3>No calculation yet</h3><p>Change assumptions and run the simulator.</p></div>';}
 
 function renderMarket(){
  const m=state.market||{live:false,products:{},state:'unavailable'};
