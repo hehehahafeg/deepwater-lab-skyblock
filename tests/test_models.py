@@ -193,3 +193,19 @@ def test_squid_pet_rarity_and_level_expected_bonus():
         squid=next(c for c in r['pool_projection']['creatures'] if c['name']=='Squid')
         raw=next(d for d in squid['drops'] if d['name']=='Ink Sac')
         assert raw['expected_units']==pytest.approx(r['ink_per_hour'])
+
+
+def test_main_ink_looting_matches_detailed_pool_ink_and_lily():
+    r=calculate_squid({'rain':True,'reels_per_hour':500,'looting_level':5,'squid_pet_rarity':'RARE','squid_pet_level':100,'bait':'NONE'},PRICES)
+    squid=next(c for c in r['pool_projection']['creatures'] if c['name']=='Squid')
+    raw=next(d for d in squid['drops'] if d['name']=='Ink Sac')
+    lily=next(d for d in squid['drops'] if d['name']=='Lily Pad')
+    assert r['ink_breakdown']['looting_expected_multiplier']==pytest.approx(1.75)
+    assert r['ink_breakdown']['squid_pet_multiplier']==pytest.approx(1.75)
+    assert raw['expected_units']==pytest.approx(r['ink_per_hour'])
+    assert lily['expected_units']==pytest.approx(r['lily_pads_per_hour'])
+
+def test_missing_all_drop_prices_does_not_claim_zero_profit():
+    r=calculate_squid({'rain':False,'bait':'NONE','reels_per_hour':400}, {}, prices_live=False)
+    assert r['priced_creature_net'] is None
+    assert r['pool_projection']['priced_drop_entries']==0
