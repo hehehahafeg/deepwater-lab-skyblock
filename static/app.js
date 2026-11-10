@@ -62,7 +62,7 @@ function renderMethods(){
 async function loadMethods(){try{let result=await api('/api/methods');state.methods=result.catalog||[];state.server=true;}catch(err){state.methods=shortMethods;}renderMethods();}
 
 function getParams(){return {
- reels_per_hour:readNum('reels',1050),sea_creature_chance:readNum('scc',100),double_hook_chance:readNum('dh',30),other_common_weight:readNum('otherCommon',800),ink_yield_multiplier:readNum('extraInk',1),
+ reels_per_hour:readNum('reels',1050),sea_creature_chance:readNum('scc',100),double_hook_chance:readNum('dh',30),other_common_weight:readNum('otherCommon',800),ink_yield_multiplier:1,
  squid_hat:$('squidHat').checked,common_hook:$('commonHook').checked,squid_pet:$('squidPet').checked,rain:$('rain').checked,pay_rain:$('payRain').checked,
  natural_spawn_efficiency:readNum('spawnEff',60),bait_saved_percent:readNum('baitSaved',10),bait:$('bait').value
 };}
@@ -86,7 +86,7 @@ async function runCalc(){
  try{const r=await post('/api/calculate/squid',{params:getParams(),manual_prices:getOverrides()});renderCalc(r);}
  catch(e){$('calc-result').className='';$('calc-result').innerHTML=`<div class="warning-box">Calculation blocked: ${esc(e.message)}. ${state.server?'Correct the input.':'Start the Python backend for verified calculations.'}</div>`;}
 }
-function resetCalc(){for(const [k,v] of [['reels','1050'],['scc','100'],['dh','30'],['otherCommon','800'],['extraInk','1'],['spawnEff','60'],['baitSaved','10'],['inkPrice',''],['lilyPrice',''],['baitPrice','']])$(k).value=v;for(const k of ['squidHat','commonHook','squidPet','rain','payRain'])$(k).checked=true;$('bait').value='FISH_BAIT';$('spawnEffText').textContent='60%';$('calc-result').innerHTML='<div class="calc-empty"><span class="empty-icon">◈</span><h3>No calculation yet</h3><p>Change assumptions and run the simulator.</p></div>';}
+function resetCalc(){for(const [k,v] of [['reels','1050'],['scc','100'],['dh','30'],['otherCommon','800'],['spawnEff','60'],['baitSaved','10'],['inkPrice',''],['lilyPrice',''],['baitPrice','']])$(k).value=v;for(const k of ['squidHat','commonHook','squidPet','rain','payRain'])$(k).checked=true;$('bait').value='FISH_BAIT';$('spawnEffText').textContent='60%';$('calc-result').innerHTML='<div class="calc-empty"><span class="empty-icon">◈</span><h3>No calculation yet</h3><p>Change assumptions and run the simulator.</p></div>';}
 
 function renderMarket(){
  const m=state.market||{live:false,products:{},state:'unavailable'};
