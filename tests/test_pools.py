@@ -107,7 +107,7 @@ def test_manual_market_prices_distinct_from_verified_live():
     assert boots['expected_coins'] == pytest.approx(boots['expected_units']*1000000)
     assert result['is_full_method_profit'] is False
     assert result['unpriced']
-    assert result['unmodelled']
+    assert not result['unmodelled']  # Every ordinary-water creature now has a base drop table.
 
 def test_missing_bait_price_never_says_zero_cost():
     result=project_pool({'pool':'bayou','bait':'HOTSPOT_BAIT','reels_per_hour':500}, {})
