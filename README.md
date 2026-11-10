@@ -22,7 +22,7 @@ Open **`Offline_Preview.html`** by double-clicking it. The same file is availabl
 
 The offline version has:
 - Working manual-price squid simulation.
-- **Pool Explorer** with 55 Wiki-weighted creatures across eight anytime pools; 18 creature-specific base loot tables and 99 drop entries. It models water/lava hotspot replacement separately from ordinary creatures and visibly withholds incomplete full-method profits.
+- **Pool Explorer** with 55 Wiki-weighted creatures across eight anytime pools; 27 creature-specific base loot tables and 157 drop entries. It models water/lava hotspot replacement separately from ordinary creatures and visibly withholds incomplete full-method profits.
 - An equipment comparison lab enumerating 16 combinations.
 - Manual session logging in this browser and a prediction-versus-observation ink error calculation.
 - A gear upgrade payback calculator.
@@ -44,25 +44,25 @@ If your school network blocks downloading dependencies or reaching Hypixel, use 
 
 ## What the financial model does and does not do
 
-The modeled Birch Park squid subset includes:
+The modeled Birch Park squid subset and expanded basic-water projection include:
 - Squid base weight `1200`, Squid Hat `2×`, Common Hook `1.25×` **applied to all common creatures**.
 - Sea Creature Chance and Double Hook Chance.
-- Level-100 Squid Pet doubling squid drops.
+- Squid Pet double-drop probability calculated from equipped pet rarity and level; a level-100 Legendary/Epic reaches 100%, but lower rarities do not.
 - Natural rain squid spawn ceiling with an adjustable spawn/clearing efficiency factor.
 - Ink Sac and Lily Pad base quantities, bait costs and optional paid rain.
 - Partial sensitivity to catches/hour and equipment combinations.
 
-The simulator now uses **all ten documented basic-water creature weights** (sum 4,296; Squid 1,200; the other COMMON creature is Sea Walker at 800). The *other common weight* control is intentionally retained as a what-if sensitivity input and its default value is the documented weight.
+The simulator now automatically uses **all ten documented basic-water creature weights** (sum 4,296; Squid 1,200; the only other COMMON creature is Sea Walker at 800), filtering by Fishing level. Players do **not** enter common weight. It incorporates Tracking, bait-dependent catch weights, Squid Pet rarity/level, and Water Hydra's one-or-two kill outcome. Each unlocked creature's base drops and aggregated item quantities are shown, with Bazaar instant-sell values when verified and AH-only drops explicitly UNPRICED.
 
 The new Pool Explorer has the current basic-water, Backwater Bayou, Lotus Atoll, Moonglade Marsh, Torrhus Canyon, Crimson Isle lava, water-hotspot and lava-hotspot pools. Their base creature weights are sourced from the current Wiki. It models Fishing-level unlocks, trophy gates for Thunder and Jawbus, common/special hooks, rare bait weight multipliers, Squid Hat, Tracking, SSC, Double Hook and hotspot replacement up to 85%. Default item costs use **actual instant-buy inputs only if a live market is available**.
 
-The app has **18 creature-specific drop tables out of 55 creatures, totaling 99 base drop entries**. The entire ordinary Bayou pool has a table, and the hotspot pool currently has four of its six tables. Missing auction/Bazaar price mapping, event-specific modifiers, ordinary fishing treasure, Fishing/Sea Creature kill throughput, Looting, Magic Find, squid-pet boost on non-squid drops, true AH valuation, rare pet exclusivity modifiers, charms and downstream mob drops remain incomplete. Do **not** interpret a priced subset as full net or a validated hourly method. Extra creatures and environment conditions can modify observed yields.
+The app has **27 creature-specific drop tables out of 55 creatures, totaling 157 base drop entries**. The entire ordinary Basic Water/Birch Park pool (all 10 creatures), including Water Hydra, and the six-creature Bayou pool have base drop tables. The water hotspot pool currently has four of six creature tables. Missing auction/Bazaar price mapping, event-specific modifiers, ordinary fishing treasure, Fishing/Sea Creature kill throughput, Looting, Magic Find, squid-pet boost on non-squid drops, true AH valuation, rare pet exclusivity modifiers, charms and downstream mob drops remain incomplete. Do **not** interpret a priced subset as full net or a validated hourly method. Extra creatures and environment conditions can modify observed yields.
 
 The user's observed squid results (30–35M total/hr; 20–25M ink/hr) are displayed independently as real-world reference points, **not inserted into the model's prediction**.
 
 ## Test results
 
-- **125 Python automated tests passed in the development build** (market mapping/cache/stale behavior, squid and full-pool probability, bait costs, Fishing-level unlocks and hotspot blending, missing prices, API routes, Python–JavaScript parity across five source-backed pool scenarios).
+- **125 Python automated tests passed in an earlier development build; the newly expanded model still requires a fresh CI/test run** (market mapping/cache/stale behavior, squid and full-pool probability, bait costs, Fishing-level unlocks and hotspot blending, missing prices, API routes, Python–JavaScript parity across five source-backed pool scenarios).
 - **Encyclopedia browser regression:** 100 anytime entries, 4 events gated by filter, individual detail pages, 14 loadout fields, Hound hypothesis display, region/effort filters, no JavaScript exceptions. Region-dependent speed caps and Hunting capture loadouts have dedicated regression tests.
 - **Desktop browser (in-process test fixture):** navigation, manual-input calculation, 16 method variants, ordinary Bayou (6 creatures), hotspot+Bayou blend (12 creatures), diagnostics UI; **9 pass / 0 fail / 0 blocked** for embedded checks under controlled prices.
 - **Offline browser:** manual-price simulation, 16 variants, Bayou source drop tables and Bayou/hotspot blend worked; offline diagnostics **7 pass / 0 fail / 2 expected blocked** because no backend/live market.
@@ -97,7 +97,7 @@ This project is independent and not affiliated with Hypixel. No API key, login, 
 
 ## Future milestones (not implemented yet)
 
-1. Complete the remaining 37 creature-specific loot tables, item IDs and non-Bazaar valuation.
+1. Complete the remaining 28 creature-specific loot tables, item IDs and non-Bazaar valuation.
 2. Live AH-based item valuation for non-Bazaar drops using validated completed sales.
 3. Optimize across locations, bait, pet swaps, equipment and movement — with reject rules and full profit coverage.
 4. Backtest against independent published sessions and **then** user-measured fishing sessions.
