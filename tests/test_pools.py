@@ -138,8 +138,8 @@ def test_catalog_source_metadata_and_missing_creatures():
     summary=catalog_summary()
     assert summary['anytime_pools']==8
     assert summary['creatures']==55
-    assert summary['creature_drop_tables']==18
-    assert summary['drop_items']==99
+    assert summary['creature_drop_tables']==27
+    assert summary['drop_items']==157
     assert summary['source'].startswith('https://')
     assert all(x['source'].startswith('https://') for pool in public_catalog()['pools'] for x in pool['creatures'])
 
@@ -172,3 +172,28 @@ def test_inkling_hotspot_drops_and_weight_with_squid_hat():
     b=next(x for x in yes if x['name']=='Inkling')
     assert b['modified_weight']==2*a['modified_weight']
     assert b['probability']>a['probability']
+
+
+def test_full_basic_water_drop_table_coverage():
+    assert len(POOLS['basic_water']['creatures'])==10
+    assert all(c.name in DROPS for c in POOLS['basic_water']['creatures'])
+    hydra=DROPS['Water Hydra']['drops']
+    lily=next(d for d in hydra if d['name']=='Lily Pad')
+    assert lily['expected_quantity']==17
+    guard=DROPS['Guardian Defender']['drops']
+    assert next(d for d in guard if d['name']=='Lily Pad')['expected_quantity']==6.1
+    walker=DROPS['Sea Walker']['drops']
+    assert next(d for d in walker if d['name']=='Rotten Flesh')['expected_quantity']==6.5
+
+
+def test_pool_two_hydra_kills_does_not_double_catch_probability():
+    p={'pool':'basic_water','reels_per_hour':1000,'sea_creature_chance':100,'double_hook_chance':0,'bait':'NONE'}
+    one=project_pool({**p,'hydra_kills_per_catch':1}, {})
+    two=project_pool({**p,'hydra_kills_per_catch':2}, {})
+    h1=next(c for c in one['creatures'] if c['name']=='Water Hydra')
+    h2=next(c for c in two['creatures'] if c['name']=='Water Hydra')
+    assert h1['expected_per_hour']==pytest.approx(h2['expected_per_hour'])
+    assert h2['expected_kills_per_hour']==pytest.approx(h1['expected_kills_per_hour']*2)
+    squid1=next(c for c in one['creatures'] if c['name']=='Squid')
+    squid2=next(c for c in two['creatures'] if c['name']=='Squid')
+    assert squid1['expected_kills_per_hour']==squid2['expected_kills_per_hour']
