@@ -168,7 +168,9 @@ def calculate_squid(params: dict, prices: dict, *, prices_live: bool = False) ->
         "manual_bait_price": p["manual_bait_price"],
     }, prices, prices_live=prices_live)
     priced_creature_net = (pool_projection["known_subtotal_after_bait"] - cost_rain
-                           if pool_projection["known_subtotal_after_bait"] is not None else None)
+                           if pool_projection["known_subtotal_after_bait"] is not None and
+                           (pool_projection["priced_drop_entries"] > 0 or total_sc == 0 and natural_squids == 0)
+                           else None)
     warnings.append("All 10 basic-water creature drop tables included in the creature projection. Bazaar-priced loot is itemized; unpriced AH items, special loot rolls and non-creature catches remain excluded.")
     return {
         "method_id": "birch_squid", "model_status": "partial-model", "is_full_method_profit": False,
