@@ -174,6 +174,7 @@ def calculate_squid(params: dict, prices: dict, *, prices_live: bool = False) ->
         "magic_find": p["magic_find"], "looting_level": p["looting_level"],
         "bait_saved_percent": p["bait_saved_percent"],
         "manual_bait_price": p["manual_bait_price"],
+        "manual_item_prices": params.get("manual_item_prices", {}),
     }, prices, prices_live=prices_live)
     priced_creature_net = (pool_projection["known_subtotal_after_bait"] - cost_rain
                            if pool_projection["known_subtotal_after_bait"] is not None and
@@ -195,7 +196,7 @@ def calculate_squid(params: dict, prices: dict, *, prices_live: bool = False) ->
         "pool_projection": pool_projection, "priced_creature_net": priced_creature_net,
         "missing": missing, "warnings": warnings,
         "sources": SQUID_SOURCES,
-        "validation_target": {"user_observed_total_per_hour": [30_000_000, 35_000_000], "user_observed_ink_per_hour": [20_000_000, 25_000_000], "note": "These are independent observations, not hardcoded predictions."},
+        "validation_target": {"user_observed_total_per_hour": [35_000_000, 40_000_000], "user_observed_ink_per_hour": [20_000_000, 25_000_000], "note": "These are independent observations, not hardcoded predictions."},
     }
 
 

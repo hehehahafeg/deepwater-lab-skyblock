@@ -58,7 +58,7 @@ The new Pool Explorer has the current basic-water, Backwater Bayou, Lotus Atoll,
 
 The app has **27 creature-specific drop tables out of 55 creatures, totaling 157 base drop entries**. The entire ordinary Basic Water/Birch Park pool (all 10 creatures), including Water Hydra, and the six-creature Bayou pool have base drop tables. The water hotspot pool currently has four of six creature tables. Missing auction/Bazaar price mapping, event-specific modifiers, ordinary fishing treasure, Fishing/Sea Creature kill throughput, Looting, Magic Find, squid-pet boost on non-squid drops, true AH valuation, rare pet exclusivity modifiers, charms and downstream mob drops remain incomplete. Do **not** interpret a priced subset as full net or a validated hourly method. Extra creatures and environment conditions can modify observed yields.
 
-The user's observed squid results (30–35M total/hr; 20–25M ink/hr) are displayed independently as real-world reference points, **not inserted into the model's prediction**.
+The user's observed squid results (35–40M total/hr; 20–25M ink/hr) are displayed independently as real-world reference points, **not inserted into the model's prediction**.
 
 ## Test results
 

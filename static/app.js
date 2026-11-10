@@ -65,6 +65,8 @@ function getParams(){return {
  reels_per_hour:readNum('reels',1050),sea_creature_chance:readNum('scc',100),double_hook_chance:readNum('dh',30),ink_yield_multiplier:1,fishing_level:readNum('fishingLevel',50),tracking:readNum('trackingStat',0),hydra_kills_per_catch:readNum('hydraKills',2),time_of_day:$('fishingTime').value,
  squid_hat:$('squidHat').checked,common_hook:$('commonHook').checked,squid_pet:$('squidPet').checked,squid_pet_rarity:$('squidPetRarity').value,squid_pet_level:readNum('squidPetLevel',100),rain:$('rain').checked,pay_rain:$('payRain').checked,
  magic_find:readNum('squid-mf',0),looting_level:readNum('squid-looting',0),
+ manual_item_prices:Object.fromEntries([['Squid Boots','boots-price'],['Fish Affinity Talisman','talisman-price'],['Water Hydra Head','hydra-price']]
+  .map(([name,id])=>[name,readNum(id)]).filter(([,price])=>price>0)),
  natural_spawn_efficiency:readNum('spawnEff',60),bait_saved_percent:readNum('baitSaved',10),bait:$('bait').value
 };}
 function getOverrides(){const o={};if(readNum('inkPrice')>0)o.INK_SACK={instant_sell:readNum('inkPrice'),instant_buy:readNum('inkPrice')};if(readNum('lilyPrice')>0)o.WATER_LILY={instant_sell:readNum('lilyPrice'),instant_buy:readNum('lilyPrice')};if(readNum('baitPrice')>0 && $('bait').value!=='NONE')o[$('bait').value]={instant_buy:readNum('baitPrice'),instant_sell:readNum('baitPrice')};return o;}
@@ -123,7 +125,7 @@ async function runCalc(){
  try{const r=await post('/api/calculate/squid',{params:getParams(),manual_prices:getOverrides()});renderCalc(r);}
  catch(e){$('calc-result').className='';$('calc-result').innerHTML=`<div class="warning-box">Calculation blocked: ${esc(e.message)}. ${state.server?'Correct the input.':'Start the Python backend for verified calculations.'}</div>`;}
 }
-function resetCalc(){for(const [k,v] of [['reels','1050'],['scc','100'],['dh','30'],['fishingLevel','50'],['trackingStat','0'],['squidPetLevel','100'],['squid-mf','0'],['squid-looting','0'],['spawnEff','60'],['baitSaved','10'],['inkPrice',''],['lilyPrice',''],['baitPrice','']])$(k).value=v;for(const k of ['squidHat','commonHook','squidPet','rain','payRain'])$(k).checked=true;$('bait').value='FISH_BAIT';$('hydraKills').value='2';$('fishingTime').value='day';$('squidPetRarity').value='LEGENDARY';$('spawnEffText').textContent='60%';$('calc-result').innerHTML='<div class="calc-empty"><span class="empty-icon">◈</span><h3>No calculation yet</h3><p>Change assumptions and run the simulator.</p></div>';}
+function resetCalc(){state.latestCalculation=null;for(const [k,v] of [['reels','1050'],['scc','100'],['dh','30'],['fishingLevel','50'],['trackingStat','0'],['squidPetLevel','100'],['squid-mf','0'],['squid-looting','0'],['spawnEff','60'],['baitSaved','10'],['inkPrice',''],['lilyPrice',''],['baitPrice',''],['boots-price',''],['talisman-price',''],['hydra-price','']])$(k).value=v;for(const k of ['squidHat','commonHook','squidPet','rain','payRain'])$(k).checked=true;$('bait').value='FISH_BAIT';$('hydraKills').value='2';$('fishingTime').value='day';$('squidPetRarity').value='LEGENDARY';$('spawnEffText').textContent='60%';$('calc-result').innerHTML='<div class="calc-empty"><span class="empty-icon">◈</span><h3>No calculation yet</h3><p>Change assumptions and run the simulator.</p></div>';}
 
 function renderMarket(){
  const m=state.market||{live:false,products:{},state:'unavailable'};
@@ -174,19 +176,63 @@ async function runDiscovery(){
 }
 const storageKey='deepwater_field_sessions_v01';
 function getSessions(){try{let records=JSON.parse(localStorage.getItem(storageKey)||'[]');return Array.isArray(records)?records:[];}catch{return[];}}
+function sessionBreakdown(record){
+ if(!record.items)return '';
+ const rows=record.items.map(item=>[item.name,fmt(item.units*60/record.duration),fmt(item.coins*60/record.duration),
+  item.modelUnits===null?'—':fmt(item.modelUnits),item.modelCoins===null?'Unpriced / unavailable':fmt(item.modelCoins)]);
+ rows.push(['Other recorded loot','—',fmt(record.other*60/record.duration),'—','—']);
+ rows.push(['Bait and other costs','—',fmt(-record.cost*60/record.duration),'—',record.modelBait===null?'—':fmt(-record.modelBait)]);
+ rows.push(['Rain cost','—',fmt(-record.rain*60/record.duration),'—',record.modelRain===null?'—':fmt(-record.modelRain)]);
+ return `<details><summary>Actual vs. modeled breakdown</summary><div class="table-scroll"><table class="data-table">
+  <thead><tr><th>Item</th><th>Actual units/hr</th><th>Actual coins/hr</th><th>Modeled units/hr</th><th>Modeled coins/hr</th></tr></thead>
+  <tbody>${rows.map(row=>`<tr>${row.map(value=>`<td>${esc(value)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>
+  <p class="subtle">Actual net ${short(record.rate)}/hr · Modeled priced subtotal after costs ${short(record.modelNet)}/hr. The model excludes unpriced and unmodeled loot; the recorded total can include it.</p></details>`;
+}
+function renderFieldRanking(sessions){
+ const anytime=new Set(['Birch Park squids','Bayou hotspots',...libraryCatalog.filter(s=>s.availability==='anytime').map(s=>s.name)]);
+ const totals=new Map();
+ for(const {method,duration,rate} of sessions){
+  if(!anytime.has(method)||!Number.isFinite(duration)||duration<=0||!Number.isFinite(rate))continue;
+  const total=totals.get(method)||{minutes:0,coins:0,runs:0};
+  total.minutes+=duration;
+  total.coins+=rate*duration/60;
+  total.runs++;
+  totals.set(method,total);
+ }
+ const rows=[...totals].map(([method,t])=>({...t,method,rate:t.coins*60/t.minutes})).sort((a,b)=>b.rate-a.rate);
+ $('field-ranking').innerHTML=rows.length?rows.map(r=>`<div class="baseline-row"><span>${esc(r.method)} · ${r.runs} runs · ${fmt(r.minutes)} min</span><strong>${short(r.rate)}/hr</strong></div>`).join(''):
+  '<p class="subtle">No ranked field runs yet. Log at least two different anytime methods to compare them.</p>';
+}
 function renderSessions(){
  const sess=getSessions();
- $('session-history').innerHTML=sess.length?sess.map(x=>`<div class="session-row"><div><strong>${esc(x.method)}</strong><small>${esc(x.date)} · ${money(x.duration)} min · ${money(x.ink)} ink · ${esc(x.notes||'')}</small></div><div><div class="coins">${short(x.rate)}/hr</div><small>${x.price_source==='live'?'Live API at logging':'Manual price'}${x.predictedInkPerHour!==null&&x.predictedInkPerHour!==undefined&&x.predictedInkPerHour>0?' · ink prediction error '+((x.measuredInkPerHour-x.predictedInkPerHour)/x.predictedInkPerHour*100).toFixed(1)+'%':''}</small></div></div>`).join(''):'<p class="panel-text">No sessions recorded yet.</p>';
+ renderFieldRanking(sess);
+ $('session-history').innerHTML=sess.length?sess.map(x=>`<div class="session-row"><div><strong>${esc(x.method)}</strong><small>${esc(x.date)} · ${money(x.duration)} min · ${money(x.ink)} ink · ${esc(x.notes||'')}</small></div><div><div class="coins">${short(x.rate)}/hr</div><small>${x.price_source==='live'?'Live API at logging':'Manual price'}${x.predictedInkPerHour!==null&&x.predictedInkPerHour!==undefined&&x.predictedInkPerHour>0?' · ink prediction error '+((x.measuredInkPerHour-x.predictedInkPerHour)/x.predictedInkPerHour*100).toFixed(1)+'%':''}</small></div></div>${sessionBreakdown(x)}`).join(''):'<p class="panel-text">No sessions recorded yet.</p>';
 }
 function saveSession(){
  const duration=readNum('duration'),ink=readNum('sessionInk'),other=readNum('sessionOther'),cost=readNum('sessionCosts');
- const priceFromLive=state.market?.live && state.market?.products?.INK_SACK?.instant_sell;
- const userPrice=readNum('sessionInkPrice');
- const price=userPrice>0?userPrice:priceFromLive;
- if(!Number.isFinite(duration)||duration<=0||duration>1440||[ink,other,cost].some(x=>!Number.isFinite(x)||x<0)||ink>1e9){alert('Enter valid, nonnegative quantities and a session duration of 1–1440 minutes.');return;}
- if(!price){alert('No live INK_SACK price available. Enter your actual ink sale price per item before saving.');return;}
- const measuredInkPerHour=ink*60/duration;const predictedInkPerHour=$('sessionType').value==='Birch Park squids'?(state.latestCalculation?.ink_per_hour??null):null;
- const record={method:$('sessionType').value,date:new Date().toLocaleString(),duration,ink,other,cost,rate:(ink*price+other-cost)*60/duration,price_source:userPrice>0?'manual':'live',notes:$('sessionNotes').value.slice(0,300),measuredInkPerHour,predictedInkPerHour};
+ const rain=readNum('session-rain');
+ const model=$('sessionType').value==='Birch Park squids'?state.latestCalculation:null;
+ const items=[
+  ['Ink Sac','INK_SACK',ink,readNum('sessionInkPrice')],
+  ['Enchanted Ink Sac','ENCHANTED_INK_SACK',readNum('session-enchanted'),readNum('session-enchanted-price')],
+  ['Lily Pad','WATER_LILY',readNum('session-lilies'),readNum('session-lilies-price')],
+ ].map(([name,id,units,manual])=>{
+  const price=manual>0?manual:state.market?.live?state.market.products?.[id]?.instant_sell:null;
+  const drops=model?.pool_projection?.creatures.flatMap(mob=>mob.drops).filter(drop=>drop.name===name)||[];
+  return {name,units,manual,price,coins:units?units*price:0,
+   modelUnits:drops.length?drops.reduce((sum,drop)=>sum+drop.expected_units,0):null,
+   modelCoins:drops.length&&drops.every(drop=>drop.expected_coins!==null)?drops.reduce((sum,drop)=>sum+drop.expected_coins,0):null};
+ });
+ if(!Number.isFinite(duration)||duration<1||duration>1440||[other,cost,rain,...items.flatMap(item=>[item.units,item.manual])].some(x=>!Number.isFinite(x)||x<0)){
+  alert('Enter nonnegative quantities and a session duration of 1–1440 minutes.');return;
+ }
+ const missing=items.find(item=>item.units>0&&!(item.price>0));
+ if(missing){alert(`Enter a sale price for ${missing.name}; live Bazaar pricing is unavailable.`);return;}
+ const record={method:$('sessionType').value,date:new Date().toLocaleString(),duration,ink,other,cost,rain,items,
+  rate:(items.reduce((sum,item)=>sum+item.coins,0)+other-cost-rain)*60/duration,
+  price_source:items.some(item=>item.units&&item.manual>0)?'manual':'live',notes:$('sessionNotes').value.slice(0,300),
+  measuredInkPerHour:ink*60/duration,predictedInkPerHour:model?.ink_per_hour??null,
+  modelNet:model?.priced_creature_net??null,modelBait:model?.cost_bait??null,modelRain:model?.cost_rain??null};
  const data=getSessions();data.unshift(record);localStorage.setItem(storageKey,JSON.stringify(data.slice(0,80)));renderSessions();
 }
 
@@ -281,6 +327,11 @@ async function loadLibrary(){
  try{
   const result=await api('/api/strategies?availability=all&limit=200');
   libraryCatalog=result.items||[];
+  const methods=$('sessionType');
+  const names=new Set([...methods.options].map(option=>option.value));
+  for(const method of libraryCatalog.filter(s=>s.availability==='anytime')){
+   if(!names.has(method.name))methods.add(new Option(method.name,method.name));
+  }
   const regions=[...new Set(libraryCatalog.map(s=>s.region))].sort((a,b)=>a.localeCompare(b));
   $('library-region').innerHTML='<option value="">All locations</option>'+regions.map(x=>`<option value="${esc(x)}">${esc(x)}</option>`).join('');
   filterLibrary();
