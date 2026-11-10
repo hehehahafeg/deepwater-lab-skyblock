@@ -415,15 +415,15 @@ function comparisonMarkup(strategy){
 function optimizerMarkup(strategy){
  if(!strategy.comparison_pool)return `<div class="method-section"><h3>Profit optimizer</h3>
   <p class="subtle">This method still needs a dedicated catch or reward model. Measured-run comparison is available below.</p></div>`;
- return `<form id="loadout-optimizer" class="method-section"><h3>Find the highest modeled profit</h3>
+ return `<form id="loadout-optimizer" class="method-section"><h3>Rank max-stat fishing builds</h3>
   <p class="subtle">Tests Magma Lord, eligible Squid Hat and Tiki Mask helmets with Magma Lord or Backwater Necklace and Gillsplash/Backwater cloak, belt and gloves. The other three armor slots stay Magma Lord (Fishing 45+).</p>
-  <p class="subtle">Enter stats with those three armor pieces and the rest of your loadout equipped, excluding the helmet, necklace, cloak, belt and gloves being swapped. Use your measured reels/hour at the speed cap. Below-cap builds stay unranked.</p>
+  <p class="subtle">Enter stats with those three armor pieces and the rest of your loadout equipped, excluding the helmet, necklace, cloak, belt and gloves being swapped. Use your measured reels/hour at the speed cap. Only builds at the location’s Fishing Speed cap and 100% Sea Creature Chance qualify. Double Hook and target bonuses can still change which qualifying build earns more.</p>
   <div class="form-row">${[
    ['speed','Fishing Speed before swaps',1000],['scc','Sea Creature Chance before swaps',100],['dh','Double Hook Chance before swaps',100],['reels','Measured capped reels/hour',5000]
   ].map(([name,label,max])=>`<label>${label}<input required name="${name}" type="number" step="any" min="${name==='reels'?1:0}" max="${max}"></label>`).join('')}
   <label>Magic Find<input required name="magic_find" type="number" step="any" min="0" max="5000" value="0"></label>
   <label>Looting<input required name="looting_level" type="number" min="0" max="5" value="0"></label></div>
-  <button class="btn btn-primary">Rank loadouts</button>
+  <button class="btn btn-primary">Rank max-stat builds</button>
   <p class="subtle">Hypothetical · Ranked by live Bazaar-priced creature drops minus bait. Hotspot runs assume 85% replacement with Hotspot Hook, Hotspot Bait, Tonic and Mythic Hermit Crab. Ordinary runs assume no bait. Jackpot, Auction House and treasure value, gear upgrades, Magmatic set Magic Find, kill-time changes and rain costs are outside this ranking.</p>
   <p class="subtle"><a href="https://hypixelskyblock.minecraft.wiki/w/Tiki_Mask" target="_blank" rel="noopener noreferrer">Tiki Mask</a> · <a href="https://hypixelskyblock.minecraft.wiki/w/Fishing_Speed" target="_blank" rel="noopener noreferrer">Equipment stats and caps</a> · <a href="https://hypixelskyblock.minecraft.wiki/w/Fishing_Hotspots" target="_blank" rel="noopener noreferrer">Hotspot mechanics</a></p>
   <output aria-live="polite"></output></form>`;
@@ -438,12 +438,16 @@ function setupOptimizer(form,strategy){
   try{
    const params=Object.fromEntries([...new FormData(form)].map(([key,value])=>[key,Number(value)]));
    const data=await post('/api/strategies/'+encodeURIComponent(strategy.id)+'/optimize',{params});
+   if(!data.rows.length){
+    result.textContent=`No tested build reaches both ${fmt(data.speed_cap)} Fishing Speed and 100% Sea Creature Chance with these inputs.`;
+    return;
+   }
    result.innerHTML=`<div class="table-scroll"><table class="data-table"><thead><tr>
     <th>Helmet</th><th>Necklace</th><th>Cloak, belt, gloves</th><th>Speed / cap</th><th>SCC</th><th>Double Hook</th><th>Bait/hr</th><th>Priced net/hr</th><th>Unpriced drops / missing tables</th>
    </tr></thead><tbody>${data.rows.map(row=>`<tr>
     <td>${esc(row.helmet)}</td><td>${esc(row.necklace)}</td><td>${row.equipment.map(esc).join(', ')}</td><td>${fmt(row.speed)} / ${fmt(data.speed_cap)}</td>
     <td>${fmt(row.scc)}%</td><td>${fmt(row.dh)}%</td><td>${short(row.bait_cost)}</td>
-    <td>${row.capped?short(row.net):'Below cap'}</td><td>${row.capped?`${row.unpriced} / ${row.missing_tables}`:'—'}</td>
+    <td>${short(row.net)}</td><td>${row.capped?`${row.unpriced} / ${row.missing_tables}`:'—'}</td>
    </tr>`).join('')}</tbody></table></div>`;
   }catch(error){result.textContent=error.message;}
   finally{button.disabled=false;}
