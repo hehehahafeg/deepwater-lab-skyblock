@@ -322,6 +322,8 @@ def project_pool(params:dict, prices:dict, *, prices_live:bool=False):
     manual=params.get('manual_item_prices',{})
     if not isinstance(manual,dict):raise ValueError('Manual prices must be a dictionary')
     squid_pet=bool(params.get('squid_pet',False))
+    pet_multiplier=bounded_number(params.get('squid_pet_multiplier',2 if squid_pet else 1),'Squid Pet expected drop multiplier',1,2)
+    if not squid_pet:pet_multiplier=1
     natural_squids=bounded_number(params.get('natural_squids_per_hour',0),'Natural squids/hour',0,100000)
     hydra_kills=bounded_number(params.get('hydra_kills_per_catch',1),'Hydra kills/catch',1,2)
     for mob in loot:
@@ -337,7 +339,7 @@ def project_pool(params:dict, prices:dict, *, prices_live:bool=False):
         else:
             for d in drop_info['drops']:
                 per_mob=d['expected_quantity']*d['chance']
-                qty=kills*per_mob*(2 if squid_pet and mob['name']=='Squid' else 1)
+                qty=kills*per_mob*(pet_multiplier if mob['name']=='Squid' else 1)
                 price=None;price_type=None
                 # Bazaar prices are player INSTANT SELL for drops, and no price
                 # is inferred for AH items. Manual item prices keyed by exact item name.
