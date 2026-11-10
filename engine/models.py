@@ -78,7 +78,7 @@ def calculate_squid(params: dict, prices: dict, *, prices_live: bool = False) ->
         "reels_per_hour": bounded_number(params.get("reels_per_hour", 1050), "Reels/hour", 0, 5000),
         "sea_creature_chance": bounded_number(params.get("sea_creature_chance", 100), "Sea Creature Chance", 0, 100),
         "double_hook_chance": bounded_number(params.get("double_hook_chance", 30), "Double Hook Chance", 0, 100),
-        "other_common_weight": BASE_OTHER_WEIGHT,  # Wiki Sea Walker weight, not a player stat.
+        "other_common_weight": 800,  # Wiki Sea Walker weight, not a player stat.
         "fishing_level": bounded_number(params.get("fishing_level", 50), "Fishing level", 1, 50),
         "tracking": bounded_number(params.get("tracking", 0), "Tracking", 0, 300),
         "time_of_day": str(params.get("time_of_day", "day")),
@@ -163,12 +163,13 @@ def calculate_squid(params: dict, prices: dict, *, prices_live: bool = False) ->
         "squid_hat": p["squid_hat"], "squid_pet": p["squid_pet"], "squid_pet_multiplier": pet_mult,
         "natural_squids_per_hour": natural_squids,
         "hydra_kills_per_catch": p["hydra_kills_per_catch"],
+        "magic_find": params.get("magic_find", 0), "looting_level": params.get("looting_level", 0),
         "bait_saved_percent": p["bait_saved_percent"],
         "manual_bait_price": p["manual_bait_price"],
     }, prices, prices_live=prices_live)
     priced_creature_net = (pool_projection["known_subtotal_after_bait"] - cost_rain
                            if pool_projection["known_subtotal_after_bait"] is not None else None)
-    warnings.append("Up to 10 unlocked basic-water creature drop tables included at base rates. Squid Pet rarity and level bonuses are automatic. Unpriced AH items, other drop modifiers and non-creature catches remain excluded.")
+    warnings.append("All 10 basic-water creature drop tables included in the creature projection. Bazaar-priced loot is itemized; unpriced AH items, special loot rolls and non-creature catches remain excluded.")
     return {
         "method_id": "birch_squid", "model_status": "partial-model", "is_full_method_profit": False,
         "inputs": p, "squid_share": share,

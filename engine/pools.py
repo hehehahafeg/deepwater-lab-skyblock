@@ -249,7 +249,7 @@ def public_catalog():
         'is_override':pool.get('is_override',False),'creatures':[cr.serialize()|{'has_drop_table':cr.name in DROPS} for cr in pool['creatures']]}
        for id,pool in POOLS.items()],
        'drop_tables':DROPS,'sources':{'sea_creatures':SEA_SOURCE,'tracking':TRACKING_SOURCE},
-       'limitations':['Events excluded','Unlisted creature drops are not zero','Magic Find and Looting not applied to base drops','Potential Bazaar IDs are not proof a tradeable market exists']}
+       'limitations':['Events excluded','Unlisted creature drops are not zero','Pool projections model standard Magic Find and Looting rules; special rolls may use base rates','Potential Bazaar IDs are not proof a tradeable market exists']}
 
 def rarity_weighted_pool(pool_id:str, *, fishing_level=50, tracking=0,
                          bait='NONE', time_of_day='day', hook='NONE', squid_hat=False,
@@ -321,6 +321,10 @@ def project_pool(params:dict, prices:dict, *, prices_live:bool=False):
     # is explicitly labelled unverified and cannot produce a verified full profit.
     manual=params.get('manual_item_prices',{})
     if not isinstance(manual,dict):raise ValueError('Manual prices must be a dictionary')
+    magic_find=bounded_number(params.get('magic_find',0),'Effective Magic Find',0,5000)
+    looting=bounded_number(params.get('looting_level',0),'Looting level',0,5)
+    if looting != int(looting):
+        raise ValueError('Looting level must be a whole number')
     squid_pet=bool(params.get('squid_pet',False))
     pet_multiplier=bounded_number(params.get('squid_pet_multiplier',2 if squid_pet else 1),'Squid Pet expected drop multiplier',1,2)
     if not squid_pet:pet_multiplier=1
@@ -338,7 +342,14 @@ def project_pool(params:dict, prices:dict, *, prices_live:bool=False):
             if spawn_count>0:unmodelled.append(mob['name'])
         else:
             for d in drop_info['drops']:
-                per_mob=d['expected_quantity']*d['chance']
+                # Dyes and mutually exclusive pet rolls need separate rules.
+                standard_roll=not d['name'].endswith((' Dye',' Pet'))
+                rolls=d['chance']
+                if standard_roll:
+                    rolls*=1+0.15*looting
+                    if rolls < 0.05:
+                        rolls*=1+magic_find/100
+                per_mob=d['expected_quantity']*rolls
                 qty=kills*per_mob*(pet_multiplier if mob['name']=='Squid' else 1)
                 price=None;price_type=None
                 # Bazaar prices are player INSTANT SELL for drops, and no price
@@ -363,7 +374,8 @@ def project_pool(params:dict, prices:dict, *, prices_live:bool=False):
                     elif d['tier']=='rare':base_rare+=val
                     else:subtotal+=val
                 entry['drops'].append({'name':d['name'],'market_id':d['market_id'],
-                           'base_chance':d['chance'],'expected_quantity_per_kill':d['expected_quantity'], 'expected_units':qty,
+                           'base_chance':d['chance'],'adjusted_chance':min(1,rolls),'expected_rolls_per_kill':rolls,
+                           'standard_modifiers_modeled':standard_roll,'expected_quantity_per_kill':d['expected_quantity'], 'expected_units':qty,
                            'tier':d['tier'],'unit_price':price,'price_source':price_type,'expected_coins':val,
                            'source':drop_info['source']})
         rows.append(entry)
@@ -393,7 +405,7 @@ def project_pool(params:dict, prices:dict, *, prices_live:bool=False):
       'has_complete_loot':not (unpriced or unmodelled),
       'is_full_method_profit':False, 'prices_live':prices_live,
       'warnings':['Partial financial coverage: prices are missing and/or full loot behavior is unmodelled.',
-                  'Base drop rates only. Squid Pet double drops on Squids are applied when enabled; Magic Find, Looting, other pets, charm shards, loot-sharing and actual kill time are not applied.',
+                  'Standard drop rolls apply Looting first, then Magic Find below 5%. Pet and dye rolls use base rates. Charm shards, loot-sharing and actual kill time are outside this projection.',
                   'Bait cost is known only when priced; full net profit is deliberately unavailable.',
                   'Jackpot expected value is shown separately and not treated as recurring revenue.'],
       'sources':{'pool':SEA_SOURCE,'tracking':TRACKING_SOURCE}}
