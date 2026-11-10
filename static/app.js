@@ -288,12 +288,42 @@ async function loadLibrary(){
  }catch(e){$('hypothetical-cards').textContent='Hypotheses could not load.';$('library-count').textContent='Could not load strategy catalog: '+e.message;}
 }
 const slotMarkup=(s)=>Object.entries(LIBRARY_SLOTS).map(([key,label])=>`<div class="slot"><span class="k">${esc(label)}</span><span class="v">${esc(s[key]||'Not yet established')}</span></div>`).join('');
+const fishingEquipment={
+ necklace:[['Angler Necklace',1,.5],['Prismarine Necklace',2,.5],['Backwater Necklace',2,1],['Frozen Amulet',3,1],['Thunderbolt Necklace',0,1.5,36],['Magma Lord Necklace',0,2.5,45]],
+ cloak:[['Ichthyic Cloak',6,0],['Finwave Cloak',10,0],['Gillsplash Cloak',14,0]],
+ belt:[['Ichthyic Belt',6,0],['Finwave Belt',10,0],['Gillsplash Belt',14,0]],
+ gloves:[['Ichthyic Gloves',6,0],['Finwave Gloves',10,0],['Gillsplash Gloves',14,0]]
+};
+function equipmentFields(){
+ return `<div class="form-row">${Object.entries(fishingEquipment).map(([slot,items])=>`
+  <label>${slot}<select data-equipment-slot="${slot}"><option value="">None / already included</option>
+  ${items.map(([name],index)=>`<option value="${index}">${name}</option>`).join('')}</select></label>`).join('')}</div>
+  <small data-equipment-bonus></small>`;
+}
+function equipmentScc(group,level,base){
+ let speed=0,scc=0;
+ for(const input of group.querySelectorAll('[data-equipment-slot]')){
+  if(input.value==='')continue;
+  const [name,itemSpeed,itemScc,minimum=0]=fishingEquipment[input.dataset.equipmentSlot][Number(input.value)];
+  if(level<minimum)throw Error(`${name} requires Fishing ${minimum}.`);
+  speed+=itemSpeed;
+  scc+=itemScc;
+ }
+ const effective=Math.min(100,base+scc);
+ group.querySelector('[data-equipment-bonus]').textContent=`Equipment adds ${fmt(speed)} Fishing Speed and ${fmt(scc)} SCC points · ${fmt(effective)}% SCC used`;
+ return effective;
+}
+const equipmentNote=`<p class="subtle">Enter SCC before the equipment selected here. Base item stats are applied automatically. Stars and reforges can be included in your base stats. Reels/hour is measured with the loadout equipped, so Fishing Speed is shown separately. <a href="https://hypixelskyblock.minecraft.wiki/w/Fishing_Speed" target="_blank" rel="noopener noreferrer">Wiki item stats</a></p>`;
 function setupHelmetComparison(form){
  const results=form.querySelector('output');
  async function compare(){
   results.textContent='Calculating both setups…';
   try{
    const params=Object.fromEntries([...new FormData(form)].map(([key,value])=>[key,Number(value)]));
+   [...form.querySelectorAll('fieldset')].forEach((group,i)=>{
+    const key=i===0?'squid_hat_scc':'full_armor_scc';
+    params[key]=equipmentScc(group,50,params[key]);
+   });
    const data=await post('/api/pools/compare-helmets',{params:{...params,bait:'HOTSPOT_BAIT',hook:'HOTSPOT_HOOK'}});
    const rows=[
     ['Squid Hat + 3/4 Magma Lord',data.squid_hat],
@@ -319,7 +349,8 @@ const helmetComparison=`<form id="helmet-comparison" class="method-section">
  <p class="subtle">Equal example rates isolate the hat's catch-weight bonus. Enter your effective stats and measured reels/hour for each setup to compare armor tradeoffs. Both use Hotspot Hook and Hotspot Bait.</p>
  ${[['squid_hat','Squid Hat'],['full_armor','Full Magma Lord']].map(([key,label])=>`<fieldset><legend>${label}</legend><div class="form-row">
   ${[['reels','Reels/hour',1050,5000],['scc','Sea Creature Chance (%)',100,100],['dh','Double Hook Chance (%)',30,100]].map(([field,name,value,max])=>`<label>${name}<input name="${key}_${field}" type="number" min="0" max="${max}" step="any" value="${value}" required></label>`).join('')}
- </div></fieldset>`).join('')}
+ </div>${equipmentFields()}</fieldset>`).join('')}
+ ${equipmentNote}
  <label>Hotspot replacement chance (%) <input name="hotspot_override_percent" type="number" min="0" max="85" step="any" value="85" required></label>
  <button class="btn btn-outline">Recalculate both setups</button>
  <p class="subtle">Partial live Bazaar comparison of fished creatures. Natural rain squid, unpriced loot and non-creature catches are outside these totals.</p>
@@ -333,13 +364,17 @@ function setupComparison(form,strategy){
   button.disabled=true;
   try{
    const rows=[...form.querySelectorAll('fieldset')].map(group=>Object.fromEntries(
-    [...group.querySelectorAll('input,select')].map(input=>[input.name,
+    [...group.querySelectorAll('input[name],select[name]')].map(input=>[input.name,
      input.type==='checkbox'?input.checked:input.type==='number'?Number(input.value):input.value])));
    if(!strategy.comparison_pool){
     const rates=rows.map(r=>(r.gross-r.cost)*60/r.minutes);
     result.textContent=`Measured net/hr · Setup A ${short(rates[0])} · Setup B ${short(rates[1])} · B − A ${short(rates[1]-rates[0])} coins/hr`;
     return;
    }
+   [...form.querySelectorAll('fieldset')].forEach((group,i)=>{
+    const row=rows[i];
+    row.sea_creature_chance=equipmentScc(group,row.fishing_level,row.sea_creature_chance);
+   });
    result.textContent='Calculating both setups…';
    const data=await post('/api/strategies/'+encodeURIComponent(strategy.id)+'/compare',{setups:rows});
    const valued=(r,value)=>r.prices_live&&r.priced_drop_entries?short(value):'Unavailable';
@@ -374,8 +409,8 @@ function comparisonMarkup(strategy){
  };
  return `<form id="method-comparison" class="method-section"><h3>Compare two setups</h3>
   <p class="subtle">${pool?'Hypothetical creature projections use documented catch weights and one live Bazaar snapshot. Example inputs are editable. Priced net subtracts bait and excludes jackpots, unpriced drops and non-creature loot.':'This method needs its own catch or reward model. Compare measured runs using the actual loot value and costs for each setup.'}</p>
-  ${[0,1].map(i=>`<fieldset><legend>Setup ${i===0?'A':'B'}</legend><div class="form-row">${fields(i)}</div></fieldset>`).join('')}
-  <button class="btn btn-outline">Compare setups</button><output aria-live="polite"></output></form>`;
+  ${[0,1].map(i=>`<fieldset><legend>Setup ${i===0?'A':'B'}</legend><div class="form-row">${fields(i)}</div>${pool?equipmentFields():''}</fieldset>`).join('')}
+  ${pool?equipmentNote:''}<button class="btn btn-outline">Compare setups</button><output aria-live="polite"></output></form>`;
 }
 async function showStrategy(id){
  const el=$('library-detail'); el.hidden=false;
