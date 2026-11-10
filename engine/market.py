@@ -9,17 +9,21 @@ TTL_SECONDS = 180
 
 
 def parse_bazaar_product(product: dict) -> dict:
-    """For player: buyPrice (buy orders) = instant SELL; sellPrice = instant BUY.
+    """Map Hypixel's order-side quick-status prices to player transactions.
 
-    Quick status prices are indicative weighted averages, not executable quotes.
+    Hypixel's quick_status.sellPrice represents the best BUY orders, so a
+    player's INSTANT SELL receives sellPrice. quick_status.buyPrice
+    represents the cheapest SELL offers, so a player's INSTANT BUY pays
+    buyPrice. Their names describe the order/trade side, not the player's
+    instant action. Weighted averages are indicative, not executable quotes.
     """
     if not isinstance(product, dict):
         raise ValueError('Invalid Bazaar product')
     quick = product.get('quick_status')
     if not isinstance(quick, dict):
         raise ValueError('Missing Bazaar quick_status')
-    sell = float(quick['buyPrice'])
-    buy = float(quick['sellPrice'])
+    sell = float(quick['sellPrice'])
+    buy = float(quick['buyPrice'])
     if not math.isfinite(sell) or not math.isfinite(buy) or sell <= 0 or buy <= 0 or sell > buy * 10:
         raise ValueError('Invalid Bazaar prices')
     return {'instant_sell': sell, 'instant_buy': buy, 'buy_volume': quick.get('buyVolume'), 'sell_volume': quick.get('sellVolume')}
