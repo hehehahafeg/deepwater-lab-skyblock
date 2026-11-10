@@ -412,6 +412,43 @@ function comparisonMarkup(strategy){
   ${[0,1].map(i=>`<fieldset><legend>Setup ${i===0?'A':'B'}</legend><div class="form-row">${fields(i)}</div>${pool?equipmentFields():''}</fieldset>`).join('')}
   ${pool?equipmentNote:''}<button class="btn btn-outline">Compare setups</button><output aria-live="polite"></output></form>`;
 }
+function optimizerMarkup(strategy){
+ if(!strategy.comparison_pool)return `<div class="method-section"><h3>Profit optimizer</h3>
+  <p class="subtle">This method still needs a dedicated catch or reward model. Measured-run comparison is available below.</p></div>`;
+ return `<form id="loadout-optimizer" class="method-section"><h3>Find the highest modeled profit</h3>
+  <p class="subtle">Tests Magma Lord, eligible Squid Hat and Tiki Mask helmets with Magma Lord or Backwater Necklace and Gillsplash/Backwater cloak, belt and gloves. The other three armor slots stay Magma Lord (Fishing 45+).</p>
+  <p class="subtle">Enter stats with those three armor pieces and the rest of your loadout equipped, excluding the helmet, necklace, cloak, belt and gloves being swapped. Use your measured reels/hour at the speed cap. Below-cap builds stay unranked.</p>
+  <div class="form-row">${[
+   ['speed','Fishing Speed before swaps',1000],['scc','Sea Creature Chance before swaps',100],['dh','Double Hook Chance before swaps',100],['reels','Measured capped reels/hour',5000]
+  ].map(([name,label,max])=>`<label>${label}<input required name="${name}" type="number" step="any" min="${name==='reels'?1:0}" max="${max}"></label>`).join('')}
+  <label>Magic Find<input required name="magic_find" type="number" step="any" min="0" max="5000" value="0"></label>
+  <label>Looting<input required name="looting_level" type="number" min="0" max="5" value="0"></label></div>
+  <button class="btn btn-primary">Rank loadouts</button>
+  <p class="subtle">Hypothetical · Ranked by live Bazaar-priced creature drops minus bait. Hotspot runs assume 85% replacement with Hotspot Hook, Hotspot Bait, Tonic and Mythic Hermit Crab. Ordinary runs assume no bait. Jackpot, Auction House and treasure value, gear upgrades, Magmatic set Magic Find, kill-time changes and rain costs are outside this ranking.</p>
+  <p class="subtle"><a href="https://hypixelskyblock.minecraft.wiki/w/Tiki_Mask" target="_blank" rel="noopener noreferrer">Tiki Mask</a> · <a href="https://hypixelskyblock.minecraft.wiki/w/Fishing_Speed" target="_blank" rel="noopener noreferrer">Equipment stats and caps</a> · <a href="https://hypixelskyblock.minecraft.wiki/w/Fishing_Hotspots" target="_blank" rel="noopener noreferrer">Hotspot mechanics</a></p>
+  <output aria-live="polite"></output></form>`;
+}
+function setupOptimizer(form,strategy){
+ const result=form.querySelector('output');
+ form.addEventListener('submit',async event=>{
+  event.preventDefault();
+  const button=event.submitter;
+  button.disabled=true;
+  result.textContent='Comparing loadouts…';
+  try{
+   const params=Object.fromEntries([...new FormData(form)].map(([key,value])=>[key,Number(value)]));
+   const data=await post('/api/strategies/'+encodeURIComponent(strategy.id)+'/optimize',{params});
+   result.innerHTML=`<div class="table-scroll"><table class="data-table"><thead><tr>
+    <th>Helmet</th><th>Necklace</th><th>Cloak, belt, gloves</th><th>Speed / cap</th><th>SCC</th><th>Double Hook</th><th>Bait/hr</th><th>Priced net/hr</th><th>Unpriced drops / missing tables</th>
+   </tr></thead><tbody>${data.rows.map(row=>`<tr>
+    <td>${esc(row.helmet)}</td><td>${esc(row.necklace)}</td><td>${row.equipment.map(esc).join(', ')}</td><td>${fmt(row.speed)} / ${fmt(data.speed_cap)}</td>
+    <td>${fmt(row.scc)}%</td><td>${fmt(row.dh)}%</td><td>${short(row.bait_cost)}</td>
+    <td>${row.capped?short(row.net):'Below cap'}</td><td>${row.capped?`${row.unpriced} / ${row.missing_tables}`:'—'}</td>
+   </tr>`).join('')}</tbody></table></div>`;
+  }catch(error){result.textContent=error.message;}
+  finally{button.disabled=false;}
+ });
+}
 async function showStrategy(id){
  const el=$('library-detail'); el.hidden=false;
  el.innerHTML='<p>Loading method setup and live market context…</p>';
@@ -428,6 +465,7 @@ async function showStrategy(id){
   <div class="warning-box"><strong>HIGH-END LOADOUT CANDIDATE — NOT A PROVEN GLOBAL OPTIMUM.</strong> ${esc(s.profit_status)}. Gear depends on caps, market prices and verified drop mechanics.${s.user_note?'<p>'+esc(s.user_note)+'</p>':''}</div>
   <div class="method-section">${optimizedProfitMarkup(s)}</div>
   <div class="method-section"><h3>What you're farming</h3><p class="subtle">${esc(s.objective)}</p><p class="subtle">${esc(s.mechanics_note)}</p></div>
+  ${optimizerMarkup(s)}
   <div class="method-section"><h3>High-end setup · Every slot</h3><div class="slot-grid">${slotMarkup(s.best_documented_setup)}</div></div>
   ${s.target==='Inkling'&&s.region==='The Park'?helmetComparison:comparisonMarkup(s)}
   <div class="method-section"><h3>Hypothetical / experimental setup</h3><strong>${esc(s.experiment.name)}</strong><p class="subtle">${esc(s.experiment.reason)}</p><p class="subtle">Test protocol: ${esc(s.experiment.protocol)}</p><span class="library-chip warn">NOT VERIFIED</span></div>
@@ -435,6 +473,8 @@ async function showStrategy(id){
   <div class="method-section"><h3>Available live price observations (not full profit)</h3><p class="subtle">${ob.market_live?'Live Bazaar snapshot;':'Live Bazaar unavailable;'} market values alone do not establish drops/hour. AH-only items remain unpriced.</p>${marketInfo}</div>
   <div class="method-section"><h3>Mechanic sources</h3><div class="source-list">${s.sources.map((u,i)=>`<a href="${esc(u)}" target="_blank" rel="noopener noreferrer">Reference ${i+1} ↗</a>`).join('')}</div></div>`;
   $('close-library-detail').addEventListener('click',()=>{el.hidden=true;el.innerHTML='';});
+  const optimizer=$('loadout-optimizer');
+  if(optimizer)setupOptimizer(optimizer,s);
   const comparison=$('helmet-comparison');
   if(comparison)setupHelmetComparison(comparison);
   const genericComparison=$('method-comparison');
