@@ -5,6 +5,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from engine.market import Bazaar
+from engine.optimizer import optimize_loadouts
 from engine.models import CATALOG, SQUID_SOURCES, sensitivity, rank_methods, payback_hours
 from engine.pools import POOLS, public_catalog, project_pool
 from engine.strategies import list_strategies, get_strategy, market_observations, STRATEGIES
@@ -153,6 +154,23 @@ def compare_strategy(strategy_id: str, payload: StrategyComparisonRequest):
                          prices_live=snapshot['live'])
             for setup in payload.setups
         ]
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+
+
+@app.post('/api/strategies/{strategy_id}/optimize')
+def optimize_strategy(strategy_id: str, payload: PoolRequest):
+    strategy = get_strategy(strategy_id)
+    if strategy is None:
+        raise HTTPException(status_code=404, detail='Unknown strategy')
+    pool = strategy_comparison_pool(strategy)
+    if pool is None:
+        raise HTTPException(status_code=422, detail='This method needs a dedicated reward model.')
+    snapshot = market.get() if payload.use_live_market else {'live': False, 'products': {}}
+    try:
+        return optimize_loadouts(pool, strategy['target'], strategy['fishing_speed_cap'],
+                                 payload.params, snapshot['products'] if snapshot['live'] else {},
+                                 live=snapshot['live'])
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
 
