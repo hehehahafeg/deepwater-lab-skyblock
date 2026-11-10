@@ -107,7 +107,7 @@ def test_manual_market_prices_distinct_from_verified_live():
     assert boots['expected_coins'] == pytest.approx(boots['expected_units']*1000000)
     assert result['is_full_method_profit'] is False
     assert result['unpriced']
-    assert result['unmodelled']
+    assert not result['unmodelled']
 
 def test_missing_bait_price_never_says_zero_cost():
     result=project_pool({'pool':'bayou','bait':'HOTSPOT_BAIT','reels_per_hour':500}, {})
@@ -197,3 +197,12 @@ def test_pool_two_hydra_kills_does_not_double_catch_probability():
     squid1=next(c for c in one['creatures'] if c['name']=='Squid')
     squid2=next(c for c in two['creatures'] if c['name']=='Squid')
     assert squid1['expected_kills_per_hour']==squid2['expected_kills_per_hour']
+
+def test_magic_find_uses_post_looting_threshold():
+    def drop(looting_level):
+        result = project_pool({'pool': 'bayou', 'magic_find': 200, 'looting_level': looting_level}, {})
+        banshee = next(row for row in result['creatures'] if row['name'] == 'Banshee')
+        return next(item for item in banshee['drops'] if item['name'] == 'Torn Cloth')
+
+    assert drop(4)['adjusted_chance'] == pytest.approx(0.144)
+    assert drop(5)['adjusted_chance'] == pytest.approx(0.0525)
