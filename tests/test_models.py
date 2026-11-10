@@ -89,7 +89,7 @@ def test_rain_cost():
 @pytest.mark.parametrize('field,invalid', [
   ('reels_per_hour',-1),('reels_per_hour',100000),('sea_creature_chance',101),
   ('double_hook_chance',float('nan')),('double_hook_chance',float('inf')),
-  ('bait_saved_percent',-1),('other_common_weight',BASE_OTHER_WEIGHT+1),
+  ('bait_saved_percent',-1),('fishing_level',51),('tracking',301),('hydra_kills_per_catch',3),
   ('manual_ink_price',-1),('natural_spawn_efficiency',101),
 ])
 def test_invalid_input_rejected(field,invalid):
@@ -134,3 +134,47 @@ def test_ink_breakdown_matches_output_and_pet_not_double_counted():
 def test_extra_ink_is_explicit_hypothesis_not_pet():
     r=calculate_squid({'rain':False,'ink_yield_multiplier':1.5},PRICES)
     assert r['ink_per_hour']==pytest.approx(r['ink_breakdown']['ink_after_pet']*1.5)
+
+
+def test_main_simulator_uses_fishing_unlocks_not_player_common_weight():
+    low = calculate_squid({'fishing_level':1,'reels_per_hour':500,'rain':False,'squid_hat':False,'common_hook':False,'bait':'NONE'},PRICES)
+    full = calculate_squid({'fishing_level':50,'reels_per_hour':500,'rain':False,'squid_hat':False,'common_hook':False,'bait':'NONE'},PRICES)
+    assert low['squid_share']==pytest.approx(1200/2000)
+    assert full['squid_share']==pytest.approx(1200/4296)
+    assert len(low['pool_projection']['creatures'])==2
+    assert len(full['pool_projection']['creatures'])==10
+    # Legacy client input cannot override a sourced weight.
+    altered=calculate_squid({'fishing_level':50,'other_common_weight':0,'reels_per_hour':500,'rain':False,'squid_hat':False,'common_hook':False,'bait':'NONE'},PRICES)
+    assert altered['squid_share']==full['squid_share']
+    assert altered['inputs']['other_common_weight']==800
+
+
+def test_main_simulator_hydra_two_kills_and_unpriced_ah():
+    p={'reels_per_hour':1000,'bait':'NONE','rain':False,'hydra_kills_per_catch':1}
+    one=calculate_squid(p,PRICES,prices_live=True)['pool_projection']
+    two=calculate_squid({**p,'hydra_kills_per_catch':2},PRICES,prices_live=True)['pool_projection']
+    h1=next(c for c in one['creatures'] if c['name']=='Water Hydra')
+    h2=next(c for c in two['creatures'] if c['name']=='Water Hydra')
+    assert h2['expected_kills_per_hour']==pytest.approx(h1['expected_kills_per_hour']*2)
+    head=next(d for d in h2['drops'] if d['name']=='Water Hydra Head')
+    assert head['expected_coins'] is None
+    assert head['expected_units']==pytest.approx(h2['expected_kills_per_hour']*.14)
+    assert any(d['mob']=='Water Hydra' and d['drop']=='Water Hydra Head' for d in two['unpriced'])
+
+
+def test_itemized_squid_ink_matches_main_model_without_hypothesis():
+    r=calculate_squid({'reels_per_hour':500,'rain':True,'squid_pet':True,'bait':'NONE'},PRICES)
+    squid=next(c for c in r['pool_projection']['creatures'] if c['name']=='Squid')
+    raw=next(d for d in squid['drops'] if d['name']=='Ink Sac')
+    assert raw['expected_units']==pytest.approx(r['ink_per_hour'])
+    enchant=next(d for d in squid['drops'] if d['name']=='Enchanted Ink Sac')
+    assert enchant['expected_units']>0
+    assert enchant['expected_coins'] is None
+    assert r['pool_projection']['known_subtotal']==pytest.approx(r['pool_projection']['known_common_revenue']+r['pool_projection']['known_rare_base_ev'])
+
+
+def test_time_of_day_rarity_modifier_round_trip():
+    p={'bait':'LIGHT_BAIT','time_of_day':'day','rain':False}
+    day=calculate_squid(p,PRICES)
+    night=calculate_squid({**p,'time_of_day':'night'},PRICES)
+    assert day['squid_share'] < night['squid_share']
