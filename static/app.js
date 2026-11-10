@@ -260,6 +260,17 @@ function filterLibrary(){
    <span class="small">View full loadout, experiment, tutorial &amp; source links ↗</span>
    </button>`).join('') || `<div class="placeholder-line">No strategies match these filters. Try All locations or include previously tested methods.</div>`;
 }
+function renderHypotheses(){
+ const rows=libraryCatalog.filter(s=>s.availability==='anytime'&&s.status==='candidate'&&s.priority>=4&&s.experiment?.verified===false);
+ $('hypothetical-cards').innerHTML=rows.map(s=>`<button class="library-card" data-strategy-id="${esc(s.id)}" type="button">
+   <span class="micro">${esc(s.region)} · ANYTIME</span>
+   <strong>${esc(s.name)}</strong>
+   <span class="small">${esc(s.experiment.reason)}</span>
+   <span class="small"><b>Field test</b> · ${esc(s.experiment.protocol)}</span>
+   <span class="library-chip warn">Estimated profit · ${Number.isFinite(s.profit_per_hour)?esc(short(s.profit_per_hour))+' coins/hr':'Pending calculator coverage'}</span>
+   <span class="small">Open full method ↗</span>
+ </button>`).join('') || '<div class="placeholder-line">No featured hypotheses are available.</div>';
+}
 async function loadLibrary(){
  try{
   const result=await api('/api/strategies?availability=all&limit=200');
@@ -267,7 +278,8 @@ async function loadLibrary(){
   const regions=[...new Set(libraryCatalog.map(s=>s.region))].sort((a,b)=>a.localeCompare(b));
   $('library-region').innerHTML='<option value="">All locations</option>'+regions.map(x=>`<option value="${esc(x)}">${esc(x)}</option>`).join('');
   filterLibrary();
- }catch(e){$('library-count').textContent='Could not load strategy catalog: '+e.message;}
+  renderHypotheses();
+ }catch(e){$('hypothetical-cards').textContent='Hypotheses could not load.';$('library-count').textContent='Could not load strategy catalog: '+e.message;}
 }
 const slotMarkup=(s)=>Object.entries(LIBRARY_SLOTS).map(([key,label])=>`<div class="slot"><span class="k">${esc(label)}</span><span class="v">${esc(s[key]||'Not yet established')}</span></div>`).join('');
 async function showStrategy(id){
@@ -300,7 +312,9 @@ function setupLibrary(){
  }
  $('library-previous').addEventListener('click',()=>{libraryPage--;filterLibrary();});
  $('library-next').addEventListener('click',()=>{libraryPage++;filterLibrary();});
- $('library-cards').addEventListener('click',e=>{const c=e.target.closest('[data-strategy-id]');if(c)showStrategy(c.dataset.strategyId);});
+ for(const id of ['library-cards','hypothetical-cards']){
+  $(id).addEventListener('click',e=>{const c=e.target.closest('[data-strategy-id]');if(c)showStrategy(c.dataset.strategyId);});
+ }
 }
 
 async function init(){

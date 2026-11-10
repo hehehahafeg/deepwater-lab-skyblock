@@ -288,7 +288,7 @@ assert len(STRATEGIES)==len(BY_ID)
 
 # Fixed schema rather than arbitrary user-generated URL queries.
 def summarize(s):
- return {k:s[k] for k in ('id','name','region','style','objective','target','pool','movement','effort','availability','status','tags','user_note','confidence','profit_status','priority')}
+ return {k:s[k] for k in ('id','name','region','style','objective','target','pool','movement','effort','availability','status','tags','user_note','confidence','profit_per_hour','profit_status','experiment','priority')}
 
 def list_strategies(*,query='',region='',availability='anytime',effort='',show_washed=True,limit=200):
  if availability not in ('anytime','all','event-only'):raise ValueError('Invalid availability')
