@@ -188,12 +188,90 @@ async function runTests(){
  $('tests-list').innerHTML=out.map(t=>`<div class="testrow"><div class="test-symbol ${t.status==='PASS'?'ok':t.status==='FAIL'?'fail':'block'}">${t.status==='PASS'?'✓':t.status==='FAIL'?'✕':'!'}</div><div class="test-info"><strong>${esc(t.name)}</strong><p>${esc(t.detail)}</p></div><span class="status ${t.status==='PASS'?'status-green':'status-amber'}">${esc(t.status)}</span></div>`).join('');
 }
 
+
+// Fishing Encyclopedia — mechanics-backed gear candidates, NOT verified profit rankings.
+let libraryCatalog=[];
+let libraryPage=1;
+const LIB_PAGE_SIZE=24;
+const LIBRARY_SLOTS={armor:'Armor',rod:'Fishing rod',hook:'Hook',line:'Line',sinker:'Sinker',bait:'Bait',casting_pet:'Casting pet',reeling_pet:'Reeling pet',kill_pet:'Kill pet',weapon:'Weapon',equipment:'Equipment',enchants:'Enchantments',stats:'Stat targets',autopet:'Autopet / swap rule'};
+function filterLibrary(){
+ const search=$('library-search').value.trim().toLowerCase();
+ const region=$('library-region').value;
+ const effort=$('library-effort').value;
+ const events=$('library-event').value;
+ const washed=$('library-washed').checked;
+ let rows=libraryCatalog.filter(s=>
+   (events==='all'||s.availability===events) &&
+   (!region||s.region===region)&&(!effort||s.effort===effort)&&
+   (washed||!['previously-tested','effort-rejected','low-prospect'].includes(s.status))&&
+   (!search||[s.name,s.region,s.objective,s.target,s.user_note].some(v=>String(v||'').toLowerCase().includes(search)))
+ );
+ const totalPages=Math.max(1,Math.ceil(rows.length/LIB_PAGE_SIZE));
+ if(libraryPage>totalPages)libraryPage=totalPages;
+ if(libraryPage<1)libraryPage=1;
+ $('library-count').textContent=`${rows.length} matching strategies (${libraryCatalog.length} catalog entries).  Each is a setup candidate, not a proven 40M/hour rate.`;
+ $('library-page').textContent=`Page ${libraryPage} of ${totalPages}`;
+ $('library-previous').disabled=libraryPage===1;
+ $('library-next').disabled=libraryPage>=totalPages;
+ const chunk=rows.slice((libraryPage-1)*LIB_PAGE_SIZE,libraryPage*LIB_PAGE_SIZE);
+ $('library-cards').innerHTML=chunk.map(s=>`<button class="library-card" data-strategy-id="${esc(s.id)}" type="button">
+   <span class="micro">${esc(s.region)} · ${esc(s.availability.toUpperCase())}</span>
+   <strong>${esc(s.name)}</strong><span class="small">${esc(s.objective)}</span>
+   <span class="tags"><span class="library-chip">${esc(s.effort)} effort</span><span class="library-chip">${esc(s.movement)} movement</span>
+   <span class="library-chip ${s.status==='candidate'?'':'warn'}">${esc(s.status)}</span></span>
+   <span class="small">View full loadout, experiment, tutorial &amp; source links ↗</span>
+   </button>`).join('') || `<div class="placeholder-line">No strategies match these filters. Try All locations or include previously tested methods.</div>`;
+}
+async function loadLibrary(){
+ try{
+  const result=await api('/api/strategies?availability=all&limit=200');
+  libraryCatalog=result.items||[];
+  const regions=[...new Set(libraryCatalog.map(s=>s.region))].sort((a,b)=>a.localeCompare(b));
+  $('library-region').innerHTML='<option value="">All locations</option>'+regions.map(x=>`<option value="${esc(x)}">${esc(x)}</option>`).join('');
+  filterLibrary();
+ }catch(e){$('library-count').textContent='Could not load strategy catalog: '+e.message;}
+}
+const slotMarkup=(s)=>Object.entries(LIBRARY_SLOTS).map(([key,label])=>`<div class="slot"><span class="k">${esc(label)}</span><span class="v">${esc(s[key]||'Not yet established')}</span></div>`).join('');
+async function showStrategy(id){
+ const el=$('library-detail'); el.hidden=false;
+ el.innerHTML='<p>Loading method setup and live market context…</p>';
+ navigate('library');
+ try{
+  const data=await api('/api/strategies/'+encodeURIComponent(id));
+  const s=data.strategy,ob=data.market_observations||{};
+  const marketRows=(ob.item_prices||[]);
+  const marketInfo=marketRows.length ?
+    `<div class="table-scroll"><table class="price-table"><thead><tr><th>Drop</th><th>Base chance</th><th>Instant sell</th><th>Price evidence</th></tr></thead><tbody>${marketRows.map(d=>`<tr><td>${esc(d.item)}</td><td>${esc((d.base_chance*100).toFixed(3)+'%')}</td><td>${d.instant_sell===null?'Unpriced':money(d.instant_sell)}</td><td>${esc(d.status)}</td></tr>`).join('')}</tbody></table></div>`:
+    '<p class="subtle">No verified drop table linked for this specific method yet. Price and profit are unknown.</p>';
+  el.innerHTML=`<button type="button" class="btn btn-outline" id="close-library-detail">← Close setup</button>
+  <h2>${esc(s.name)}</h2><p class="subtle">${esc(s.region)} · ${esc(s.availability)} · ${esc(s.effort)} effort · ${esc(s.movement)} movement · Reviewed ${esc(s.reviewed_on)}</p>
+  <div class="warning-box"><strong>HIGH-END LOADOUT CANDIDATE — NOT A PROVEN GLOBAL OPTIMUM.</strong> ${esc(s.profit_status)}. Gear depends on caps, market prices and verified drop mechanics.${s.user_note?'<p>'+esc(s.user_note)+'</p>':''}</div>
+  <div class="method-section"><h3>What you're farming</h3><p class="subtle">${esc(s.objective)}</p><p class="subtle">${esc(s.mechanics_note)}</p></div>
+  <div class="method-section"><h3>High-end setup · Every slot</h3><div class="slot-grid">${slotMarkup(s.best_documented_setup)}</div></div>
+  <div class="method-section"><h3>Hypothetical / experimental setup</h3><strong>${esc(s.experiment.name)}</strong><p class="subtle">${esc(s.experiment.reason)}</p><p class="subtle">Test protocol: ${esc(s.experiment.protocol)}</p><span class="library-chip warn">NOT VERIFIED</span></div>
+  <div class="method-section"><h3>Fishing tutorial</h3><ol>${s.tutorial.map(x=>`<li>${esc(x)}</li>`).join('')}</ol></div>
+  <div class="method-section"><h3>Available live price observations (not full profit)</h3><p class="subtle">${ob.market_live?'Live Bazaar snapshot;':'Live Bazaar unavailable;'} market values alone do not establish drops/hour. AH-only items remain unpriced.</p>${marketInfo}</div>
+  <div class="method-section"><h3>Mechanic sources</h3><div class="source-list">${s.sources.map((u,i)=>`<a href="${esc(u)}" target="_blank" rel="noopener noreferrer">Reference ${i+1} ↗</a>`).join('')}</div></div>`;
+  $('close-library-detail').addEventListener('click',()=>{el.hidden=true;el.innerHTML='';});
+  el.scrollIntoView({behavior:'smooth',block:'start'});
+ }catch(e){el.innerHTML=`<div class="warning-box">Couldn't open this method: ${esc(e.message)}</div>`;}
+}
+function setupLibrary(){
+ for(const id of ['library-search','library-region','library-effort','library-event','library-washed']){
+  $(id).addEventListener(id==='library-search'?'input':'change',()=>{libraryPage=1;filterLibrary();});
+ }
+ $('library-previous').addEventListener('click',()=>{libraryPage--;filterLibrary();});
+ $('library-next').addEventListener('click',()=>{libraryPage++;filterLibrary();});
+ $('library-cards').addEventListener('click',e=>{const c=e.target.closest('[data-strategy-id]');if(c)showStrategy(c.dataset.strategyId);});
+}
+
 async function init(){
+ setupLibrary();
  $('run-pool').addEventListener('click',runPool);$('run-calc').addEventListener('click',runCalc);$('reset-calc').addEventListener('click',resetCalc);$('run-discovery').addEventListener('click',runDiscovery);
  $('market-search').addEventListener('input',renderMarket);$('reload-market').addEventListener('click',()=>loadMarket(true));$('refresh-prices').addEventListener('click',()=>loadMarket(true));
  $('save-session').addEventListener('click',saveSession);$('clear-sessions').addEventListener('click',()=>{if(confirm('Remove all recorded field sessions on this browser?')){localStorage.removeItem(storageKey);renderSessions();}});
  $('run-tests').addEventListener('click',runTests);$('calc-payback').addEventListener('click',runPayback);$('spawnEff').addEventListener('input',()=>$('spawnEffText').textContent=$('spawnEff').value+'%');
- await Promise.allSettled([loadMethods(),loadMarket(),loadPoolCatalog()]);
+ await Promise.allSettled([loadMethods(),loadMarket(),loadPoolCatalog(),loadLibrary()]);
  renderSessions();
  // Poll for new official prices periodically while the website is open.
  // The server independently caches Hypixel requests for 180 seconds.

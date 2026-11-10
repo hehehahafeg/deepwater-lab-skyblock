@@ -1,12 +1,20 @@
 # Deepwater Lab — SkyBlock Fishing Profit Engine
 
-**Version 0.3 — deployable web service with automatically refreshed live Bazaar support; still not a finished discovery system.**
+**Version 0.4 — hosted web app + 104-entry fishing method library, with live Bazaar integration; full profit discovery remains under development.**
 
 Built for Minecraft IGN **SmackThatCuzzo**, with a strict 40M+ coins/hour target, an anytime-method preference, low movement, and no recycled event-dependent strategies. No Hypixel credentials or payment are needed.
 
 ## Best option: hosted HTTPS website
 
-The package now includes a free-plan Render deployment manifest (`render.yaml`) and a `DEPLOY_WEBSITE.md` walkthrough. Deployment requires access to a Render account (and usually a Git repository), and is **not completed or live yet**. On the hosted site, Bazaar prices are fetched server-side and the page checks for updated prices approximately every three minutes. No paid plan is required for a small test deployment, but the free server sleeps after inactivity.
+The package now includes a free-plan Render deployment manifest (`render.yaml`) and a `DEPLOY_WEBSITE.md` walkthrough. The website is deployed at **https://deepwater-lab-skyblock.onrender.com** on Render’s free tier. On the hosted site, Bazaar prices are fetched server-side and the page checks for updated prices approximately every three minutes. No paid plan is required for a small test deployment, but the free server sleeps after inactivity.
+
+## Method encyclopedia (v0.4)
+
+The **Method Library** tab has **104 entries: 100 anytime and 4 event/seasonal**, hidden by default to respect the user's preference. These cover all 55 individually represented creatures in the eight source-indexed weighted pools, plus location-wide loops, bait/sinker experiments, treasure fishing, trophy fishing, Hunting hybrids, and retired/washy methods. Use text search, region, effort, and availability controls. Click a method to open the proposed maximum-endgame loadout with 14 equipment/stat fields, a cast-to-loot tutorial, a clearly unverified experiment (including the Hound/Tiki Mask hypothesis), original Wiki links and observations of any Bazaar-priced drops.
+
+**Accuracy distinction:** gear pages are **candidate high-end setups**, not a mathematically certified optimum. Only broad shared mechanics are validated; individual drops, modifiers, pet interactions, loot exclusivity, AH-only prices, and per-hour throughput still need independent validation. No method gets an invented full hourly profit number.
+
+The new backend endpoints are `GET /api/strategies`, `GET /api/strategies/{id}`; they serve catalog entries and live-price observations. Event entries never appear under the default anytime filter.
 
 ## Alternative: standalone HTML (no installation)
 
@@ -30,7 +38,7 @@ Requirements: Python 3.11+ and internet access.
 
 **macOS/Linux:** run `bash RUN_MAC_LINUX.sh`. Open `http://127.0.0.1:8765`.
 
-The local backend calls the **official public, keyless Hypixel Bazaar endpoint** server-side with a 3-minute cache. `quick_status.buyPrice` is labelled **player instant sell**; `quick_status.sellPrice` is **player instant buy**. The displayed quick-price numbers are weighted approximations, not guaranteed sale executions. Unavailable or stale API data is **not silently replaced with fabricated prices**.
+The local backend calls the **official public, keyless Hypixel Bazaar endpoint** server-side with a 3-minute cache. `quick_status.sellPrice` is **player instant sell**; `quick_status.buyPrice` is **player instant buy**. (The naming is from the order-book side, not the player action.) The displayed quick-price numbers are weighted approximations, not guaranteed sale executions. Unavailable or stale API data is **not silently replaced with fabricated prices**.
 
 If your school network blocks downloading dependencies or reaching Hypixel, use the offline demo instead. Replit/paid hosting is not required to run locally.
 
@@ -54,12 +62,13 @@ The user's observed squid results (30–35M total/hr; 20–25M ink/hr) are displ
 
 ## Test results
 
-- **97 Python automated tests passed** (market mapping/cache/stale behavior, squid and full-pool probability, bait costs, Fishing-level unlocks and hotspot blending, missing prices, API routes, Python–JavaScript parity across five source-backed pool scenarios).
+- **125 Python automated tests passed in the development build** (market mapping/cache/stale behavior, squid and full-pool probability, bait costs, Fishing-level unlocks and hotspot blending, missing prices, API routes, Python–JavaScript parity across five source-backed pool scenarios).
+- **Encyclopedia browser regression:** 100 anytime entries, 4 events gated by filter, individual detail pages, 14 loadout fields, Hound hypothesis display, region/effort filters, no JavaScript exceptions. Region-dependent speed caps and Hunting capture loadouts have dedicated regression tests.
 - **Desktop browser (in-process test fixture):** navigation, manual-input calculation, 16 method variants, ordinary Bayou (6 creatures), hotspot+Bayou blend (12 creatures), diagnostics UI; **9 pass / 0 fail / 0 blocked** for embedded checks under controlled prices.
 - **Offline browser:** manual-price simulation, 16 variants, Bayou source drop tables and Bayou/hotspot blend worked; offline diagnostics **7 pass / 0 fail / 2 expected blocked** because no backend/live market.
 - **Mobile browser:** 390px viewport, mobile navigation and calculator worked without horizontal overflow.
 
-**Not tested/verified:** live retrieval from Hypixel within this execution environment, because outbound DNS/network access is restricted. Data is fetched from your machine when the server runs, provided Hypixel is reachable. The 97 tests do not prove the prediction matches gameplay. No live Bazaar call or independent real-game backtesting was possible from this test environment.
+**Not tested/verified:** live retrieval from Hypixel within this execution environment, because outbound DNS/network access is restricted. Data is fetched from your machine when the server runs, provided Hypixel is reachable. These tests do not prove the prediction matches gameplay. No live Bazaar call or independent real-game backtesting was possible from this test environment.
 
 Run the test suite yourself:
 

@@ -7,9 +7,10 @@ from pydantic import BaseModel, Field
 from engine.market import Bazaar
 from engine.models import CATALOG, SQUID_SOURCES, sensitivity, rank_methods, payback_hours
 from engine.pools import public_catalog, project_pool
+from engine.strategies import list_strategies, get_strategy, market_observations, STRATEGIES
 
 ROOT=Path(__file__).resolve().parent
-app=FastAPI(title='SkyBlock Fishing Profit Engine',version='0.3.0')
+app=FastAPI(title='SkyBlock Fishing Profit Engine',version='0.4.0')
 app.mount('/static', StaticFiles(directory=str(ROOT/'static')), name='static')
 market=Bazaar()
 
@@ -33,11 +34,29 @@ def index():
 
 @app.get('/api/health')
 def health():
-    return {'status':'ok','version':'0.3.0','market_requires_network':True,'engine_scope':'8 anytime weighted pools; 18 partial creature drop tables; partial squid model; no proven automated discovery'}
+    return {'status':'ok','version':'0.4.0','market_requires_network':True,'engine_scope':'104 method encyclopedia profiles; 8 anytime weighted pools; 18 partial creature drop tables; no proven automated discovery'}
 
 @app.get('/api/methods')
 def methods():
     return {'catalog':CATALOG, 'approved_full_profit_methods':[], 'disclaimer':'No complete, price-verified methods yet; ranking intentionally empty.'}
+
+@app.get('/api/strategies')
+def strategies(query:str='', region:str='', availability:str='anytime', effort:str='', show_washed:bool=True, limit:int=200):
+    try:
+        return list_strategies(query=query,region=region,availability=availability,
+                               effort=effort,show_washed=show_washed,limit=limit)
+    except ValueError as e:
+        raise HTTPException(status_code=422,detail=str(e))
+
+@app.get('/api/strategies/{strategy_id}')
+def strategy_detail(strategy_id:str):
+    detail=get_strategy(strategy_id)
+    if not detail:
+        raise HTTPException(status_code=404,detail='Unknown strategy')
+    market_snapshot=market.get()
+    observations=market_observations(detail,market_snapshot.get('products',{}),live=market_snapshot.get('live',False))
+    return {'strategy':detail,'market_observations':observations,
+            'note':'Market item quotes are observations, NOT modelled whole-method profit.'}
 
 @app.get('/api/prices')
 def prices(refresh:bool=False):
