@@ -120,3 +120,17 @@ def test_payback():
     assert payback_hours(200_000_000,50_000_000,40_000_000)==20
     assert payback_hours(100_000_000,30_000_000,40_000_000) is None
     assert payback_hours(100_000_000,40_000_000,40_000_000) is None
+
+
+def test_ink_breakdown_matches_output_and_pet_not_double_counted():
+    r=calculate_squid({'rain':False,'reels_per_hour':500,'squid_pet':True,'bait':'NONE'},PRICES)
+    b=r['ink_breakdown']
+    assert b['squid_pet_multiplier']==2
+    assert b['unverified_extra_multiplier']==1
+    assert b['base_ink_from_natural_squids']==0
+    assert b['ink_after_pet']==pytest.approx(b['base_ink_from_fished_squids']*2)
+    assert r['ink_per_hour']==pytest.approx(b['ink_after_pet'])
+
+def test_extra_ink_is_explicit_hypothesis_not_pet():
+    r=calculate_squid({'rain':False,'ink_yield_multiplier':1.5},PRICES)
+    assert r['ink_per_hour']==pytest.approx(r['ink_breakdown']['ink_after_pet']*1.5)
