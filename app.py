@@ -87,6 +87,28 @@ def pools_project(payload:PoolRequest):
     except ValueError as exc:
         raise HTTPException(status_code=422,detail=str(exc))
 
+@app.post('/api/pools/compare-helmets')
+def compare_helmets(payload: PoolRequest):
+    snapshot = market.get() if payload.use_live_market else {'live': False, 'products': {}}
+    common = dict(payload.params, pool='hotspot_water', base_pool='basic_water')
+    try:
+        return {
+            name: project_pool(
+                dict(common, **{
+                    'squid_hat': name == 'squid_hat',
+                    'reels_per_hour': common.get(f'{name}_reels', 1050),
+                    'sea_creature_chance': common.get(f'{name}_scc', 100),
+                    'double_hook_chance': common.get(f'{name}_dh', 30),
+                }),
+                snapshot['products'] if snapshot['live'] else {},
+                prices_live=snapshot['live'],
+            )
+            for name in ('squid_hat', 'full_armor')
+        }
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+
+
 @app.post('/api/payback')
 def payback(payload:PaybackRequest):
     try:

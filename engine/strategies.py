@@ -233,7 +233,10 @@ add('Birch Park · Rain Squid + Natural Spawns','The Park','squid','Optimize fis
 add('Birch Park · Dry Squid Control','The Park','squid','Measure whether paying for rain improves net after cost and natural-spawn clearing.',target='Squid',pool='basic_water',priority=4)
 G[-1]['best_documented_setup']['bait']='Fish Bait only if below Fishing Speed cap; dry session must not include rain fee'
 add('Birch Park · Squid Pet vs GDrag Kill Swap','The Park','squid','Isolate guaranteed Squid Pet ink multiplier versus rare-drop MF.',target='Squid',pool='basic_water',priority=5)
-add('Birch Park · Inkling Hotspot + Squid','The Park','water-hotspot','Compare common squid pool with Inkling hotspot replacement.',target='Inkling',pool='hotspot_water',movement='small-area',priority=5)
+add('Birch Park · Inkling Hotspot + Squid','The Park','water-hotspot','Target Inklings on hotspot rolls and Squids on ordinary rolls.',target='Inkling',pool='hotspot_water',movement='small-area',priority=5,
+    sources=(WIKI+'Squid_Hat',),
+    verified_note='Squid Hat doubles Squid and Inkling spawn weights in their respective pools. Compare catch rates and net profit against a full Magma Lord setup before calling either loadout optimal.')
+G[-1]['best_documented_setup']['armor']='Squid Hat + 3/4 hypermaxed Submerged Magma Lord. Check Fishing Speed, Sea Creature Chance and Double Hook Chance after the swap.'
 add('Spider Den · Water Hotspot','Spider’s Den','water-hotspot','Compare hotspot sea creatures on a Combat island versus Bayou drops.',target='Wiki Tiki',pool='hotspot_water',movement='small-area',priority=4)
 add('Basic Water · Water Hydra Rare-Drop Focus','Basic Water Islands','water','Track rare water sea creature revenue relative to squid opportunity cost.',target='Water Hydra',rarity='LEGENDARY',weight=18,pool='basic_water',priority=2)
 add('Lotus Atoll · Puddle Jumper Hook Focus','Lotus Atoll','lotus','Use specialized hook to increase Puddle Jumper weight; count jump-minigame downtime.',target='Puddle Jumper',rarity='LEGENDARY',weight=100,pool='lotus',priority=5,effort='medium')
