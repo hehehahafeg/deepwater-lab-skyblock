@@ -178,3 +178,18 @@ def test_time_of_day_rarity_modifier_round_trip():
     day=calculate_squid(p,PRICES)
     night=calculate_squid({**p,'time_of_day':'night'},PRICES)
     assert day['squid_share'] < night['squid_share']
+
+
+def test_squid_pet_rarity_and_level_expected_bonus():
+    common=calculate_squid({'rain':False,'reels_per_hour':500,'squid_pet_rarity':'COMMON','squid_pet_level':100,'bait':'NONE'},PRICES)
+    rare=calculate_squid({'rain':False,'reels_per_hour':500,'squid_pet_rarity':'RARE','squid_pet_level':100,'bait':'NONE'},PRICES)
+    epic50=calculate_squid({'rain':False,'reels_per_hour':500,'squid_pet_rarity':'EPIC','squid_pet_level':50,'bait':'NONE'},PRICES)
+    legendary=calculate_squid({'rain':False,'reels_per_hour':500,'squid_pet_rarity':'LEGENDARY','squid_pet_level':100,'bait':'NONE'},PRICES)
+    assert common['ink_breakdown']['squid_pet_multiplier']==pytest.approx(1.5)
+    assert rare['ink_breakdown']['squid_pet_multiplier']==pytest.approx(1.75)
+    assert epic50['ink_breakdown']['squid_pet_multiplier']==pytest.approx(1.5)
+    assert legendary['ink_breakdown']['squid_pet_multiplier']==pytest.approx(2.0)
+    for r in [common,rare,epic50,legendary]:
+        squid=next(c for c in r['pool_projection']['creatures'] if c['name']=='Squid')
+        raw=next(d for d in squid['drops'] if d['name']=='Ink Sac')
+        assert raw['expected_units']==pytest.approx(r['ink_per_hour'])
