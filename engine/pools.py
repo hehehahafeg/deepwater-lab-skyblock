@@ -401,7 +401,7 @@ def project_pool(params:dict, prices:dict, *, prices_live:bool=False):
       'known_jackpot_base_ev':jackpot,'known_subtotal':subtotal_and_rare,
       'known_subtotal_after_bait':subtotal_and_rare-cost_bait if cost_bait is not None else None,
       'bait_cost':cost_bait,'bait_price':bprice,
-      'unpriced':unpriced,'unmodelled':unmodelled,
+      'unpriced':unpriced,'unmodelled':unmodelled,'priced':priced,'priced_drop_entries':len(priced),
       'has_complete_loot':not (unpriced or unmodelled),
       'is_full_method_profit':False, 'prices_live':prices_live,
       'warnings':['Partial financial coverage: prices are missing and/or full loot behavior is unmodelled.',
