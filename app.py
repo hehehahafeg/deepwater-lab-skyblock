@@ -34,7 +34,7 @@ def index():
 
 @app.get('/api/health')
 def health():
-    return {'status':'ok','version':'0.4.0','market_requires_network':True,'engine_scope':'104 method encyclopedia profiles; 8 anytime weighted pools; 18 partial creature drop tables; no proven automated discovery'}
+    return {'status':'ok','version':'0.4.0','market_requires_network':True,'engine_scope':'104 method encyclopedia profiles; 8 anytime weighted pools; 27 partial creature drop tables; no proven automated discovery'}
 
 @app.get('/api/methods')
 def methods():
@@ -100,7 +100,7 @@ def rankings():
 
 @app.get('/api/sources')
 def sources():
-    return {'sources':SQUID_SOURCES, 'pool_catalog':public_catalog()['sources'], 'limitations':['Eight creature spawn pools modeled; only 18 of 55 individual loot tables checked','Partial modeled earnings cannot be treated as total profit','User-reported benchmarks are independent observations','Live API may be unavailable in restricted hosting environments']}
+    return {'sources':SQUID_SOURCES, 'pool_catalog':public_catalog()['sources'], 'limitations':['Eight creature spawn pools modeled; 27 of 55 individual creature loot tables reviewed','Partial modeled earnings cannot be treated as total profit','User-reported benchmarks are independent observations','Live API may be unavailable in restricted hosting environments']}
 
 @app.post('/api/experiments/squid')
 def experiment_squid(payload:CalcRequest):
