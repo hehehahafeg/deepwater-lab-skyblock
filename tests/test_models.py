@@ -96,7 +96,7 @@ def test_invalid_input_rejected(field,invalid):
     with pytest.raises(ValueError):calculate_squid({field:invalid},PRICES)
 
 def test_unknown_bait_rejected():
-    with pytest.raises(ValueError):calculate_squid({'bait':'WHALE_BAIT'},PRICES)
+    with pytest.raises(ValueError):calculate_squid({'bait':'UNKNOWN_BAIT'},PRICES)
 
 def test_rare_and_other_drops_always_flagged_unmodelled():
     r=calculate_squid({},PRICES,prices_live=True)
