@@ -39,14 +39,21 @@ def executable_quote(products, product_id, quantity, action):
     orders = products[product_id].get(side)
     if not isinstance(orders, list) or not orders:
         raise ValueError("Order-book side unavailable")
-    remaining = float(quantity)
-    total = 0.0
+    # Sort by executable price rather than assuming the API supplies ordered levels.
+    # Validate the entire book before using any level, even if the requested fill
+    # would otherwise complete at the first level.
+    levels = []
     for order in orders:
         if not isinstance(order, dict):
             raise ValueError("Invalid order-book level")
         price, amount = order.get("pricePerUnit"), order.get("amount")
         if any(isinstance(x, bool) or not isinstance(x, (int, float)) or not math.isfinite(x) or x <= 0 for x in (price, amount)):
             raise ValueError("Invalid order-book price or quantity")
+        levels.append((float(price), float(amount)))
+    levels.sort(key=lambda level: level[0], reverse=action == "instant_sell")
+    remaining = float(quantity)
+    total = 0.0
+    for price, amount in levels:
         fill = min(remaining, amount)
         total += fill * price
         remaining -= fill
