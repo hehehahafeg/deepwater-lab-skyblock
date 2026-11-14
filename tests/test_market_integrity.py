@@ -29,3 +29,27 @@ def test_invalid_values_blocked():
     with pytest.raises(ValueError):
         executable_quote({"A": {"buy_summary": [{"pricePerUnit": 0, "amount": 2}]}},
                          "A", 1, "instant_sell")
+
+def test_unsorted_order_book_gets_best_sell_fill():
+    products = {'A': {'buy_summary': [
+        {'pricePerUnit': 80, 'amount': 2},
+        {'pricePerUnit': 100, 'amount': 1},
+        {'pricePerUnit': 90, 'amount': 2},
+    ]}}
+    assert executable_quote(products, 'A', 3, 'instant_sell')['total_coins'] == 280
+
+def test_unsorted_order_book_gets_cheapest_buy_fill():
+    products = {'A': {'sell_summary': [
+        {'pricePerUnit': 150, 'amount': 3},
+        {'pricePerUnit': 110, 'amount': 1},
+        {'pricePerUnit': 120, 'amount': 2},
+    ]}}
+    assert executable_quote(products, 'A', 3, 'instant_buy')['total_coins'] == 350
+
+def test_invalid_later_level_rejected_even_if_earlier_fills():
+    products = {'A': {'buy_summary': [
+        {'pricePerUnit': 100, 'amount': 10},
+        {'pricePerUnit': float('nan'), 'amount': 1},
+    ]}}
+    with pytest.raises(ValueError, match='Invalid'):
+        executable_quote(products, 'A', 1, 'instant_sell')
