@@ -186,7 +186,7 @@ record('Sea Walker',[
 record('Sea Witch',[
  d('Raw Salmon','RAW_FISH:1',1,3,1,'common',2),
  d('Lily Pad','WATER_LILY',1,2),
- d('Tropical Fish','CLOWNFISH',1,1,.2),
+ d('Tropical Fish','RAW_FISH:2',1,1,.2),
  d('Fairy Armor Piece',None,1,1,.05,'rare'),
  d('Aquamarine Dye',None,1,1,1/5_000_000,'jackpot')])
 record('Sea Archer',[
@@ -205,13 +205,13 @@ record('Rider of the Deep',[
  d('Aquamarine Dye',None,1,1,1/5_000_000,'jackpot')])
 record('Catfish',[
  d('Raw Cod','RAW_FISH',20,20),d('Raw Salmon','RAW_FISH:1',10,10),
- d('Pufferfish','RAW_FISH:3',5,5),d('Tropical Fish','CLOWNFISH',2,2),
+ d('Pufferfish','RAW_FISH:3',5,5),d('Tropical Fish','RAW_FISH:2',2,2),
  d('Lily Pad','WATER_LILY',2,3),d('Sponge','SPONGE',1,1,.2),
  d('Frail VI book',None,1,1,.01,'rare'),
  d('Aquamarine Dye',None,1,1,1/2_500_000,'jackpot')])
 record('Sea Leech',[
  d('Raw Cod','RAW_FISH',10,10),d('Lily Pad','WATER_LILY',3,4),
- d('Tropical Fish','CLOWNFISH',2,2),d('Sponge','SPONGE',1,1,.4),
+ d('Tropical Fish','RAW_FISH:2',2,2),d('Sponge','SPONGE',1,1,.4),
  d('Spiked Hook VI book',None,1,1,.02,'rare'),
  d('Aquamarine Dye',None,1,1,1/2_500_000,'jackpot')])
 record('Guardian Defender',[
@@ -223,12 +223,12 @@ record('Guardian Defender',[
  d('Aquamarine Dye',None,1,1,1/2_500_000,'jackpot')])
 record('Deep Sea Protector',[
  d('Lily Pad','WATER_LILY',12,15),d('Enchanted Iron Ingot','ENCHANTED_IRON',2,2),
- d('Tropical Fish','CLOWNFISH',2,3),d('Sponge','SPONGE',1,1),
+ d('Tropical Fish','RAW_FISH:2',2,3),d('Sponge','SPONGE',1,1),
  d('Angler VI book',None,1,1,.02,'rare'),
  d('Aquamarine Dye',None,1,1,1/2_500_000,'jackpot')])
 record('Water Hydra',[
  d('Raw Cod','RAW_FISH',20,20),d('Raw Salmon','RAW_FISH:1',2,2),
- d('Pufferfish','RAW_FISH:3',2,2),d('Tropical Fish','CLOWNFISH',2,2),
+ d('Pufferfish','RAW_FISH:3',2,2),d('Tropical Fish','RAW_FISH:2',2,2),
  d('Sponge','SPONGE',5,5),d('Lily Pad','WATER_LILY',16,18,1,'common',17),
  d('Fish Affinity Talisman',None,1,1,.30,'rare'),
  d('Water Hydra Head',None,1,1,.14,'rare'),
