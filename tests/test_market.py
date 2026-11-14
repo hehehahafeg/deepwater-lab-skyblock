@@ -88,3 +88,25 @@ def test_live_cache_downgrades_when_source_ages_out():
     clock[0]=1101
     result=b.get()
     assert result['state']=='stale' and result['live'] is False
+
+def test_live_depth_snapshot_uses_same_fetch_for_prices_and_books():
+    count = [0]
+    def fetch():
+        count[0] += 1
+        return {'success':True, 'lastUpdated':1000000,
+                'products': {'INK_SACK': {**PROD,
+                    'buy_summary':[{'pricePerUnit':2600,'amount':100}],
+                    'sell_summary':[{'pricePerUnit':2945,'amount':100}]}}}
+    b = Bazaar(fetcher=fetch, clock=lambda:1000)
+    snapshot, books = b.live_depth_snapshot()
+    assert count == [1]
+    assert snapshot['products']['INK_SACK']['instant_sell'] == 2600.2
+    assert books['INK_SACK']['buy_summary'][0]['pricePerUnit'] == 2600
+    assert b.depth_quote('INK_SACK', 2, 'instant_sell')['total_coins'] == 5200
+    assert count == [1]
+
+def test_live_depth_snapshot_refuses_stale_source():
+    b = Bazaar(fetcher=lambda: {'success':True,'lastUpdated':100000,
+                  'products':{'INK_SACK':PROD}}, clock=lambda:1000)
+    with pytest.raises(ValueError, match='Fresh'):
+        b.live_depth_snapshot()
