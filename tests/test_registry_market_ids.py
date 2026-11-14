@@ -4,6 +4,7 @@ EXPECTED = {
     'Enchanted Lily Pad': 'ENCHANTED_WATER_LILY',
     'Pufferfish': 'RAW_FISH:3',
     'Raw Salmon': 'RAW_FISH:1',
+    'Tropical Fish': 'RAW_FISH:2',
 }
 
 def test_corrected_registry_market_ids_for_all_drop_rows():
