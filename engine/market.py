@@ -36,6 +36,7 @@ class Bazaar:
         self.clock = clock or time.time
         self._lock = threading.Lock()
         self._data = None
+        self._order_books = None
         self._checked = 0.0
         self._api_updated = None
         self._last_error = None
@@ -67,6 +68,7 @@ class Bazaar:
                 if not data:
                     raise ValueError('No valid Bazaar product prices')
                 self._data = data
+                self._order_books = {key: {'buy_summary': item.get('buy_summary'), 'sell_summary': item.get('sell_summary')} for key, item in validated_products.items() if key in data and isinstance(item, dict)}
                 self._checked = self.clock()
                 self._api_updated = payload['lastUpdated']
                 self._last_error = None
@@ -76,6 +78,13 @@ class Bazaar:
                 self._last_error = str(exc)[:250]
                 self._failed_at = self.clock()
                 return self._response('stale' if self._data else 'unavailable')
+
+    def depth_quote(self, product_id, quantity, action):
+        from engine.market_integrity import executable_quote
+        snapshot = self.get()
+        if not snapshot['live']:
+            raise ValueError('Fresh Bazaar snapshot unavailable')
+        return executable_quote(self._order_books or {}, product_id, quantity, action)
 
     def _source_fresh(self):
         if self._api_updated is None:
