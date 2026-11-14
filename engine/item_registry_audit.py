@@ -48,6 +48,14 @@ def reconcile_registry(audit, registry_payload):
             'registry_name_matches': [summary(x) for x in by_name.get(normalize_name(row['name']), [])][:10],
             'status': 'unverified-reward-identity',
         })
-    return {'registry_item_count': len(by_id), 'missing_candidate_id_reconciliation': missing,
+    unique = [row for row in unassigned if len(row['registry_name_matches']) == 1]
+    ambiguous = [row for row in unassigned if len(row['registry_name_matches']) > 1]
+    unmatched = [row for row in unassigned if not row['registry_name_matches']]
+    return {'registry_item_count': len(by_id),
+            'unassigned_distinct_names': len(unassigned),
+            'unassigned_unique_registry_name_matches': len(unique),
+            'unassigned_ambiguous_registry_name_matches': len(ambiguous),
+            'unassigned_no_registry_name_matches': len(unmatched),
+            'missing_candidate_id_reconciliation': missing,
             'unassigned_drop_registry_hints': unassigned,
             'warning': 'Registry names and NPC fields are research leads, not validated reward identities or guaranteed realizable prices.'}
