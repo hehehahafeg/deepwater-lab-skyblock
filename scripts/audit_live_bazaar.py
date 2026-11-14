@@ -38,6 +38,8 @@ def run():
     })
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     OUTPUT.write_text(json.dumps(result, indent=2, sort_keys=True) + '\n')
+    print('Missing Bazaar candidate IDs:', ', '.join(row['market_id'] for row in result['missing']) or '(none)')
+    print('Unassigned drop names:', ', '.join(row['name'] for row in result['unassigned']))
     print(json.dumps({
         'bazaar_products_price_valid': len(valid),
         'drop_rows': result['drop_rows'],
