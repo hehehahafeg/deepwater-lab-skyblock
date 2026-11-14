@@ -80,9 +80,7 @@ class Bazaar:
     def _source_fresh(self):
         if self._api_updated is None:
             return False
-        source_time = float(self._api_updated)
-        if source_time > 1e11:
-            source_time /= 1000
+        source_time = float(self._api_updated) / 1000
         return -30 <= self.clock() - source_time <= MAX_AGE_SECONDS
 
     def _response(self, state):
