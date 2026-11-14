@@ -85,10 +85,10 @@ record('Squid',[
  d('Squid Boots',None,1,1,.01,'rare'),
  d('Aquamarine Dye',None,1,1,1/5_000_000,'jackpot')], note='Pet double-drop effects and Looting on enchanted ink require separate verification.')
 record('Alligator',[
- d('Enchanted Lily Pad','ENCHANTED_LILY_PAD',2,4), d('Alligator Skin',None,1,1),
+ d('Enchanted Lily Pad','ENCHANTED_WATER_LILY',2,4), d('Alligator Skin',None,1,1),
  d('Condensed Lily Pad',None,1,1,.005,'rare'),d('Aquamarine Dye',None,1,1,1/50_000,'jackpot')])
 record('Titanoboa',[
- d('Enchanted Lily Pad','ENCHANTED_LILY_PAD',2,4),d('Condensed Lily Pad',None,1,1,.01,'rare'),
+ d('Enchanted Lily Pad','ENCHANTED_WATER_LILY',2,4),d('Condensed Lily Pad',None,1,1,.01,'rare'),
  d("Bobbin’ Scriptures",None,1,1,.01,'rare'), d('Titanoboa Shed',None,1,1,.002,'rare'),
  d('Snake Eyes',None,1,1,.0011,'rare'), d('Aquamarine Dye',None,1,1,1/50_000,'jackpot')])
 record('Puddle Jumper',[
@@ -145,19 +145,19 @@ record('Trash Gobbler',[
 record('Dumpster Diver',[
  d('Lily Pad','WATER_LILY',2,4),
  d('Bronze Bowl',None,1,1,.02,'rare'),
- d('Enchanted Lily Pad','ENCHANTED_LILY_PAD',1,1,.01,'rare'),
+ d('Enchanted Lily Pad','ENCHANTED_WATER_LILY',1,1,.01,'rare'),
  d('Overflowing Trash Can',None,1,1,.005,'rare'),
  d('Aquamarine Dye',None,1,1,1/5_000_000,'jackpot')])
 record('Banshee',[
  d('Lily Pad','WATER_LILY',8,16),
  d('Torn Cloth',None,1,1,.03,'rare'),
- d('Enchanted Lily Pad','ENCHANTED_LILY_PAD',1,1,.02,'rare'),
+ d('Enchanted Lily Pad','ENCHANTED_WATER_LILY',1,1,.02,'rare'),
  d('Calcified Heart',None,1,1,.001,'rare'),
  d('Aquamarine Dye',None,1,1,1/2_500_000,'jackpot')])
 record('Bayou Sludge',[
  d('Lily Pad','WATER_LILY',16,32),
  d('Slimeball','SLIME_BALL',16,32),
- d('Enchanted Lily Pad','ENCHANTED_LILY_PAD',1,1,.04,'rare'),
+ d('Enchanted Lily Pad','ENCHANTED_WATER_LILY',1,1,.04,'rare'),
  d('Enchanted Slimeball','ENCHANTED_SLIME_BALL',1,1,.04,'rare'),
  d('Poison Sample',None,1,1,.005,'rare'),
  d('Blessing VI enchanted book',None,1,1,.001,'rare'),
@@ -184,7 +184,7 @@ record('Sea Walker',[
  d('Raw Cod','RAW_FISH',2,2),d('Lily Pad','WATER_LILY',1,1),
  d('Aquamarine Dye',None,1,1,1/5_000_000,'jackpot')])
 record('Sea Witch',[
- d('Raw Salmon','RAW_SALMON',1,3,1,'common',2),
+ d('Raw Salmon','RAW_FISH:1',1,3,1,'common',2),
  d('Lily Pad','WATER_LILY',1,2),
  d('Tropical Fish','CLOWNFISH',1,1,.2),
  d('Fairy Armor Piece',None,1,1,.05,'rare'),
@@ -204,8 +204,8 @@ record('Rider of the Deep',[
  d('Magnet VI book',None,1,1,.02,'rare'),
  d('Aquamarine Dye',None,1,1,1/5_000_000,'jackpot')])
 record('Catfish',[
- d('Raw Cod','RAW_FISH',20,20),d('Raw Salmon','RAW_SALMON',10,10),
- d('Pufferfish','PUFFERFISH',5,5),d('Tropical Fish','CLOWNFISH',2,2),
+ d('Raw Cod','RAW_FISH',20,20),d('Raw Salmon','RAW_FISH:1',10,10),
+ d('Pufferfish','RAW_FISH:3',5,5),d('Tropical Fish','CLOWNFISH',2,2),
  d('Lily Pad','WATER_LILY',2,3),d('Sponge','SPONGE',1,1,.2),
  d('Frail VI book',None,1,1,.01,'rare'),
  d('Aquamarine Dye',None,1,1,1/2_500_000,'jackpot')])
@@ -227,8 +227,8 @@ record('Deep Sea Protector',[
  d('Angler VI book',None,1,1,.02,'rare'),
  d('Aquamarine Dye',None,1,1,1/2_500_000,'jackpot')])
 record('Water Hydra',[
- d('Raw Cod','RAW_FISH',20,20),d('Raw Salmon','RAW_SALMON',2,2),
- d('Pufferfish','PUFFERFISH',2,2),d('Tropical Fish','CLOWNFISH',2,2),
+ d('Raw Cod','RAW_FISH',20,20),d('Raw Salmon','RAW_FISH:1',2,2),
+ d('Pufferfish','RAW_FISH:3',2,2),d('Tropical Fish','CLOWNFISH',2,2),
  d('Sponge','SPONGE',5,5),d('Lily Pad','WATER_LILY',16,18,1,'common',17),
  d('Fish Affinity Talisman',None,1,1,.30,'rare'),
  d('Water Hydra Head',None,1,1,.14,'rare'),
