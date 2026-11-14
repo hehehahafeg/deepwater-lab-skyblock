@@ -79,6 +79,12 @@ class Bazaar:
                 self._failed_at = self.clock()
                 return self._response('stale' if self._data else 'unavailable')
 
+    def live_order_books(self):
+        snapshot = self.get()
+        if not snapshot['live']:
+            raise ValueError('Fresh Bazaar snapshot unavailable')
+        return self._order_books or {}
+
     def depth_quote(self, product_id, quantity, action):
         from engine.market_integrity import executable_quote
         snapshot = self.get()
