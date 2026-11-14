@@ -53,3 +53,8 @@ def test_invalid_later_level_rejected_even_if_earlier_fills():
     ]}}
     with pytest.raises(ValueError, match='Invalid'):
         executable_quote(products, 'A', 1, 'instant_sell')
+
+@pytest.mark.parametrize('bad', [float('nan'), float('inf'), -float('inf')])
+def test_nonfinite_source_timestamp_rejected(bad):
+    with pytest.raises(ValueError, match='timestamp'):
+        validate_snapshot({'success': True, 'lastUpdated': bad, 'products': {'A': {}}}, now=1000)
