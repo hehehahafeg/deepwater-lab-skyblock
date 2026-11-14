@@ -5,6 +5,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from engine.market import Bazaar
+from engine.market_audit import audit_market_ids
 from engine.optimizer import optimize_loadouts
 from engine.estimates import estimate_strategy
 from engine.models import CATALOG, SQUID_SOURCES, sensitivity, rank_methods, payback_hours
@@ -71,6 +72,16 @@ def strategy_detail(strategy_id:str, magic_find:float=Query(300,ge=0,le=1000), c
 @app.get('/api/prices')
 def prices(refresh:bool=False):
     return market.get(refresh)
+
+@app.get('/api/market/audit')
+def market_audit():
+    snapshot = market.get()
+    if not snapshot['live']:
+        raise HTTPException(status_code=503, detail='Fresh Bazaar snapshot unavailable')
+    return {'market_api_last_updated': snapshot['api_last_updated'],
+            'market_state': snapshot['state'],
+            **audit_market_ids(snapshot['products'])}
+
 
 @app.get('/api/market/depth-quote')
 def market_depth_quote(product_id: str, quantity: float = Query(..., gt=0), action: str = Query(...)):
