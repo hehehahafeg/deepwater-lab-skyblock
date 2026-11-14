@@ -73,7 +73,16 @@ def prices(refresh:bool=False):
     return market.get(refresh)
 
 @app.get('/api/market/depth-quote')
-def market_depth_quote(product_id: str, quantity: float = Query(..., gt=0), action: str = Query(..., pattern='^(instant_sell|instant_buy)
+def market_depth_quote(product_id: str, quantity: float = Query(..., gt=0), action: str = Query(...)):
+    if action not in ('instant_sell', 'instant_buy'):
+        raise HTTPException(status_code=422, detail='Invalid action')
+    try:
+        return market.depth_quote(product_id, quantity, action)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+
+
+@app.post('/api/calculate/squid')
 def calculate(payload:CalcRequest):
     snapshot=market.get() if payload.use_live_market else {'live':False,'products':{}}
     prices=dict(snapshot['products']) if snapshot['live'] else {}
