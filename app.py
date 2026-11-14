@@ -112,15 +112,13 @@ def pools_project_depth(payload: PoolRequest):
     """Partial pool EV using indicative hourly Bazaar order depth; fails closed."""
     if not payload.use_live_market:
         raise HTTPException(status_code=422, detail='Depth pricing requires live market')
-    snapshot = market.get()
-    if not snapshot['live']:
-        raise HTTPException(status_code=503, detail='Fresh Bazaar snapshot unavailable')
     try:
-        books = market.live_order_books()
+        snapshot, books = market.live_depth_snapshot()
         return project_pool(payload.params, snapshot['products'], prices_live=True,
                             order_books=books, depth_pricing=True)
     except ValueError as exc:
-        raise HTTPException(status_code=422, detail=str(exc))
+        status = 503 if str(exc) == 'Fresh Bazaar snapshot unavailable' else 422
+        raise HTTPException(status_code=status, detail=str(exc))
 
 
 @app.post('/api/pools/compare-helmets')
