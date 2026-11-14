@@ -15,9 +15,8 @@ def validate_snapshot(payload, now=None, max_age_seconds=MAX_AGE_SECONDS):
     timestamp = payload.get("lastUpdated")
     if isinstance(timestamp, bool) or not isinstance(timestamp, (int, float)):
         raise ValueError("Bazaar timestamp missing")
-    timestamp = float(timestamp)
-    if timestamp > 1e11:
-        timestamp /= 1000
+    # Hypixel Bazaar lastUpdated is Unix milliseconds, including in synthetic tests.
+    timestamp = float(timestamp) / 1000
     now = time.time() if now is None else now
     if timestamp > now + 30 or now - timestamp > max_age_seconds:
         raise ValueError("Bazaar snapshot stale or future-dated")
