@@ -22,8 +22,14 @@ def reconcile_registry(audit, registry_payload):
         if isinstance(item.get('name'), str):
             by_name.setdefault(normalize_name(item['name']), []).append(item)
     def summary(item):
+        npc = item.get('npc_sell_price')
+        if isinstance(npc, bool) or not isinstance(npc, (int, float)) or not 0 <= npc < float('inf'):
+            npc = None
         return {'id': item['id'], 'name': item.get('name'),
-                'npc_sell_price': item.get('npc_sell_price'),
+                'npc_sell_price': npc,
+                'npc_price_evidence': 'registry-field-present' if npc is not None else 'not-provided',
+                'can_auction': item.get('can_auction'), 'can_trade': item.get('can_trade'),
+                'soulbound': item.get('soulbound'),
                 'category': item.get('category')}
     missing = []
     for row in audit['missing']:
