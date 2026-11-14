@@ -13,6 +13,7 @@ from dataclasses import dataclass, asdict
 from typing import Any
 from math import isfinite
 from engine.models import bounded_number
+from engine.market_integrity import executable_quote
 
 WIKI='https://hypixelskyblock.minecraft.wiki/w/'
 SEA_SOURCE=WIKI+'Sea_Creatures'
@@ -284,7 +285,9 @@ def rarity_weighted_pool(pool_id:str, *, fishing_level=50, tracking=0,
              'source':WIKI+cr.name.replace(' ','_'),'has_drop_table':cr.name in DROPS}
             for cr,w in weights]
 
-def project_pool(params:dict, prices:dict, *, prices_live:bool=False):
+def project_pool(params:dict, prices:dict, *, prices_live:bool=False, order_books=None, depth_pricing=False):
+    if depth_pricing and (not prices_live or not isinstance(order_books, dict)):
+        raise ValueError('Depth pricing requires a fresh live Bazaar order book')
     pool_id=params.get('pool','basic_water')
     reels=bounded_number(params.get('reels_per_hour',1050),'Reels/hour',0,5000)
     scc=bounded_number(params.get('sea_creature_chance',100),'Sea Creature Chance',0,100)
@@ -379,6 +382,34 @@ def project_pool(params:dict, prices:dict, *, prices_live:bool=False):
                            'tier':d['tier'],'unit_price':price,'price_source':price_type,'expected_coins':val,
                            'source':drop_info['source']})
         rows.append(entry)
+    # Optional, fail-closed executable-depth pricing. Aggregate expected hourly units
+    # per market ID before quoting: separate creature rolls share the same order book.
+    # Keep the ordinary quick_status model unchanged unless explicitly requested.
+    if depth_pricing:
+        quantities = {}
+        for entry in rows:
+            for drop in entry['drops']:
+                mid = drop['market_id']
+                if mid and drop['expected_coins'] is not None and drop['expected_units'] > 0 and drop['price_source'] == 'bazaar-live':
+                    quantities[mid] = quantities.get(mid, 0) + drop['expected_units']
+        depth_prices = {}
+        for mid, quantity in quantities.items():
+            depth_prices[mid] = executable_quote(order_books, mid, quantity, 'instant_sell')['unit_price']
+        subtotal = base_rare = jackpot = 0.0
+        priced = []
+        for entry in rows:
+            for drop in entry['drops']:
+                mid = drop['market_id']
+                if mid in depth_prices and drop['price_source'] == 'bazaar-live':
+                    drop['unit_price'] = depth_prices[mid]
+                    drop['price_source'] = 'bazaar-depth-indicative'
+                    drop['expected_coins'] = drop['expected_units'] * depth_prices[mid]
+                if drop['expected_coins'] is not None:
+                    priced.append({'mob': entry['name'], 'drop': drop['name'],
+                                   'coins': drop['expected_coins'], 'price_type': drop['price_source']})
+                    if drop['tier'] == 'jackpot': jackpot += drop['expected_coins']
+                    elif drop['tier'] == 'rare': base_rare += drop['expected_coins']
+                    else: subtotal += drop['expected_coins']
     # Operating costs: require current instant-BUY input price or a manual price.
     bait=params.get('bait','NONE')
     saved=bounded_number(params.get('bait_saved_percent',10),'Bait saved percent',0,100)
@@ -393,7 +424,10 @@ def project_pool(params:dict, prices:dict, *, prices_live:bool=False):
         if bprice is None and params.get('manual_bait_price') is not None:
             v=bounded_number(params['manual_bait_price'],'Manual bait price',0,1e10)
             if v>0:bprice=v
-    cost_bait=(reels*(1-saved/100)*bprice) if bprice is not None else None
+    bait_units = reels*(1-saved/100)
+    if depth_pricing and bait!='NONE' and bprice is not None and bait_units>0:
+        bprice=executable_quote(order_books, bait, bait_units, 'instant_buy')['unit_price']
+    cost_bait=(bait_units*bprice) if bprice is not None else None
     # The evaluated subset MUST NEVER be mistaken for full profitability.
     subtotal_and_rare=subtotal+base_rare
     return {'pool':pool_id,'pool_name':POOLS[pool_id]['name'],'creature_rate':total_expected,'hotspot_override_percent':None if override_share is None else override_share*100,
@@ -404,6 +438,7 @@ def project_pool(params:dict, prices:dict, *, prices_live:bool=False):
       'unpriced':unpriced,'unmodelled':unmodelled,'priced':priced,'priced_drop_entries':len(priced),
       'has_complete_loot':not (unpriced or unmodelled),
       'is_full_method_profit':False, 'prices_live':prices_live,
+      'depth_pricing':depth_pricing, 'depth_quote_type':'indicative-hourly-order-depth' if depth_pricing else None,
       'warnings':['Partial financial coverage: prices are missing and/or full loot behavior is unmodelled.',
                   'Standard drop rolls apply Looting first, then Magic Find below 5%. Pet and dye rolls use base rates. Charm shards, loot-sharing and actual kill time are outside this projection.',
                   'Bait cost is known only when priced; full net profit is deliberately unavailable.',
