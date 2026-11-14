@@ -51,6 +51,7 @@ def run():
     })
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     OUTPUT.write_text(json.dumps(result, indent=2, sort_keys=True) + '\n')
+    print('Registry reward coverage:', json.dumps({key: value for key, value in result['registry_reconciliation'].items() if key.startswith('unassigned_') and isinstance(value, int)}, sort_keys=True))
     print('Registry classifications:', json.dumps(result['registry_reconciliation']['missing_candidate_id_reconciliation'], sort_keys=True))
     print('Unassigned registry hints:', json.dumps(result['registry_reconciliation']['unassigned_drop_registry_hints'], sort_keys=True))
     print('Missing Bazaar candidate IDs:', ', '.join(row['market_id'] for row in result['missing']) or '(none)')
