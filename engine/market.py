@@ -3,6 +3,7 @@ import time
 import threading
 import math
 import requests
+from engine.market_integrity import validate_snapshot, MAX_AGE_SECONDS
 
 URL = 'https://api.hypixel.net/v2/skyblock/bazaar'
 TTL_SECONDS = 180
@@ -49,15 +50,16 @@ class Bazaar:
     def get(self, refresh=False):
         with self._lock:
             if not refresh and self._data is not None and self.clock() - self._checked < TTL_SECONDS:
-                return self._response('live-cache')
+                return self._response('live-cache' if self._source_fresh() else 'stale')
             if not refresh and self._data is None and self._failed_at and self.clock()-self._failed_at < 60:
                 return self._response('unavailable')
             try:
                 payload = self.fetcher()
                 if not isinstance(payload, dict) or payload.get('success') is not True or not isinstance(payload.get('products'), dict):
                     raise ValueError('Hypixel returned invalid or unsuccessful payload')
+                validated_products = validate_snapshot(payload, now=self.clock())
                 data = {}
-                for key, item in payload['products'].items():
+                for key, item in validated_products.items():
                     try:
                         data[key] = parse_bazaar_product(item)
                     except (TypeError,ValueError,KeyError):
@@ -66,7 +68,7 @@ class Bazaar:
                     raise ValueError('No valid Bazaar product prices')
                 self._data = data
                 self._checked = self.clock()
-                self._api_updated = payload.get('lastUpdated')
+                self._api_updated = payload['lastUpdated']
                 self._last_error = None
                 self._failed_at = 0.0
                 return self._response('live')
@@ -75,9 +77,19 @@ class Bazaar:
                 self._failed_at = self.clock()
                 return self._response('stale' if self._data else 'unavailable')
 
+    def _source_fresh(self):
+        if self._api_updated is None:
+            return False
+        source_time = float(self._api_updated)
+        if source_time > 1e11:
+            source_time /= 1000
+        return -30 <= self.clock() - source_time <= MAX_AGE_SECONDS
+
     def _response(self, state):
         # Stale prices must NEVER be treated as verified current prices.
-        is_live = state in ('live', 'live-cache')
+        is_live = state in ('live', 'live-cache') and self._source_fresh()
+        if not is_live and state in ('live', 'live-cache'):
+            state = 'stale'
         return {'state':state, 'live':is_live, 'checked_at':self._checked or None,
                 'api_last_updated':self._api_updated, 'age_seconds': round(self.clock()-self._checked) if self._checked else None,
                 'last_error': self._last_error, 'products':self._data or {}, 'product_count':len(self._data or {}), 'source':URL}
