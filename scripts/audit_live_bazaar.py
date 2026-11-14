@@ -35,6 +35,12 @@ def run():
         'User-Agent': 'DeepwaterLab/0.4 (public item registry audit)'})
     registry_response.raise_for_status()
     result['registry_reconciliation'] = reconcile_registry(result, registry_response.json())
+    for entry in result['registry_reconciliation']['missing_candidate_id_reconciliation']:
+        for hint in entry['name_hints']:
+            hint['bazaar_listed'] = hint['id'] in valid
+    for entry in result['registry_reconciliation']['unassigned_drop_registry_hints']:
+        for hint in entry['registry_name_matches']:
+            hint['bazaar_listed'] = hint['id'] in valid
     result.update({
         'audited_at_utc': datetime.now(timezone.utc).isoformat(),
         'source': URL,
