@@ -43,6 +43,15 @@ def run():
         for hint in entry['registry_name_matches']:
             hint['bazaar_listed'] = hint['id'] in valid
     result['unpriced_reward_research_queue'] = build_reward_queue(result['registry_reconciliation'])
+    # Price evidence for *candidate IDs only*: never feed these quotes into EV
+    # until drop identity, eligibility and actual market route are verified.
+    for reward in result['unpriced_reward_research_queue']['queue']:
+        reward['candidate_bazaar_quotes'] = [
+            {'item_id': item_id, 'instant_sell': valid[item_id]['instant_sell'],
+             'snapshot_last_updated_ms': payload['lastUpdated'],
+             'identity_verified': False, 'eligible_sale_route_verified': False}
+            for item_id in reward['bazaar_id_hints'] if item_id in valid
+        ]
     result.update({
         'audited_at_utc': datetime.now(timezone.utc).isoformat(),
         'source': URL,
