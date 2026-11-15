@@ -14,6 +14,7 @@ from typing import Any
 from math import isfinite
 from engine.models import bounded_number
 from engine.market_integrity import executable_quote
+from engine.modifier_ledger import build_modifier_ledger
 
 WIKI='https://hypixelskyblock.minecraft.wiki/w/'
 SEA_SOURCE=WIKI+'Sea_Creatures'
@@ -433,6 +434,8 @@ def project_pool(params:dict, prices:dict, *, prices_live:bool=False, order_book
     if not squid_pet:pet_multiplier=1
     natural_squids=bounded_number(params.get('natural_squids_per_hour',0),'Natural squids/hour',0,100000)
     hydra_kills=bounded_number(params.get('hydra_kills_per_catch',1),'Hydra kills/catch',1,2)
+    modifier_ledger = build_modifier_ledger()
+    modifier_status = {(r['modifier'], r['reward_channel']): r['status'] for r in modifier_ledger['entries']}
     for mob in loot:
         spawn_count=total_expected*mob['probability']
         kills=spawn_count+(natural_squids if mob['name']=='Squid' else 0)
@@ -488,6 +491,11 @@ def project_pool(params:dict, prices:dict, *, prices_live:bool=False, order_book
                            'base_chance':d['chance'],'adjusted_chance':min(1,rolls),'expected_rolls_per_kill':rolls,
                            'standard_modifiers_modeled':standard_roll,'expected_quantity_per_kill':d['expected_quantity'], 'quantity_modifier_multiplier':quantity_multiplier, 'expected_units':qty,
                            'tier':d['tier'],'unit_price':price,'price_source':price_type,'expected_coins':val,
+                           'modifier_eligibility_status': {
+                               'looting': modifier_status[('looting','dyes_and_jackpots' if not standard_roll else 'direct_kill_items')],
+                               'magic_find': modifier_status[('magic_find','dyes_and_jackpots' if not standard_roll else 'direct_kill_items')],
+                           },
+                           'modifier_calculation_provenance': 'generalized-unverified-heuristic' if standard_roll else 'base-chance-no-generalized-modifier',
                            'source':drop_info['source']})
         rows.append(entry)
     # Optional, fail-closed executable-depth pricing. Aggregate expected hourly units
@@ -554,6 +562,10 @@ def project_pool(params:dict, prices:dict, *, prices_live:bool=False, order_book
       'unpriced':unpriced,'unmodelled':unmodelled,'priced':priced,'priced_drop_entries':len(priced),
       'has_complete_loot':not (unpriced or unmodelled),
       'is_full_method_profit':False, 'prices_live':prices_live,
+      'modifier_eligibility_verified':False,
+      'modifier_ledger_summary':{'tracked_interactions':len(modifier_ledger['entries']),
+                                 'verified_profit_modifier_count':modifier_ledger['verified_profit_modifier_count'],
+                                 'unverified_count':modifier_ledger['unverified_count']},
       'depth_pricing':depth_pricing, 'depth_quote_type':'indicative-hourly-order-depth' if depth_pricing else None,
       'warnings':['Partial financial coverage: prices are missing and/or full loot behavior is unmodelled.',
                   'Standard drop rolls apply Looting first, then Magic Find below 5%. Pet and dye rolls use base rates. Charm shards, loot-sharing and actual kill time are outside this projection.',
