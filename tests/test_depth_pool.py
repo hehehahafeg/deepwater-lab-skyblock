@@ -39,3 +39,21 @@ def test_depth_pool_uses_instant_buy_for_bait():
     baseline = project_pool(params, prices, prices_live=True)
     depth = project_pool(params, prices, prices_live=True, order_books=books, depth_pricing=True)
     assert depth['bait_cost'] > baseline['bait_cost']
+
+def test_depth_pool_rejects_manual_bait_price_without_live_bazaar_quote():
+    with pytest.raises(ValueError, match='manual bait prices'):
+        project_pool({'pool':'basic_water','reels_per_hour':100,'bait':'FISH_BAIT',
+                      'manual_bait_price': 5}, {}, prices_live=True,
+                     order_books={}, depth_pricing=True)
+
+def test_depth_pool_rejects_missing_bait_quote():
+    with pytest.raises(ValueError, match='live Bazaar bait price'):
+        project_pool({'pool':'basic_water','reels_per_hour':100,'bait':'FISH_BAIT'},
+                     {}, prices_live=True, order_books={}, depth_pricing=True)
+
+def test_manual_bait_source_is_explicit_in_non_depth_projection():
+    result = project_pool({'pool':'basic_water','reels_per_hour':100,
+                           'bait':'FISH_BAIT','manual_bait_price':5}, {},
+                          prices_live=True)
+    assert result['bait_price_source'] == 'manual-unverified'
+    assert result['bait_cost'] > 0
