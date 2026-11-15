@@ -25,3 +25,10 @@ def test_hotspot_lava_is_still_partial_profit():
     assert pool['full_profit_coverage_verified'] is False
     result=project_pool({'pool':'hotspot_lava','base_pool':'crimson_lava','hotspot_override_percent':85,'reels_per_hour':100}, {})
     assert result['is_full_method_profit'] is False
+
+def test_silver_magmafish_uses_official_bazaar_id_in_every_pool():
+    silver_rows=[(mob,d) for mob,table in DROPS.items() for d in table['drops'] if d['name']=='Silver Magmafish']
+    assert len(silver_rows)>=7
+    assert all(d['market_id']=='MAGMA_FISH_SILVER' for _,d in silver_rows)
+    result=project_pool({'pool':'hotspot_lava','base_pool':'crimson_lava','hotspot_override_percent':85,'reels_per_hour':100}, {})
+    assert result['is_full_method_profit'] is False
