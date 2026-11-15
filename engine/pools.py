@@ -576,6 +576,29 @@ def project_pool(params:dict, prices:dict, *, prices_live:bool=False, order_book
         bprice=executable_quote(order_books, bait, bait_units, 'instant_buy')['unit_price']
         bait_price_source='bazaar-depth-indicative'
     cost_bait=(bait_units*bprice) if bprice is not None else None
+    # Coverage is weighted by projected creature encounters, not table counts.
+    # A complete table can still have unknown prices or missing reward channels.
+    total_catches = sum(m['expected_per_hour'] for m in rows)
+    missing_table_catches = sum(m['expected_per_hour'] for m in rows if not m['has_drop_table'])
+    known_table_catches = total_catches - missing_table_catches
+    priced_row_count = sum(d['expected_coins'] is not None for m in rows for d in m['drops'])
+    unpriced_row_count = sum(d['expected_coins'] is None and d['expected_units'] > 0
+                             for m in rows for d in m['drops'])
+    missing_table_share = missing_table_catches / total_catches if total_catches > 0 else None
+    coverage = {
+        'expected_creature_encounters_per_hour': total_catches,
+        'missing_drop_table_encounters_per_hour': missing_table_catches,
+        'missing_drop_table_encounter_share': missing_table_share,
+        'documented_drop_table_encounters_per_hour': known_table_catches,
+        'priced_drop_rows': priced_row_count,
+        'unpriced_positive_ev_drop_rows': unpriced_row_count,
+        'includes_treasure': False,
+        'includes_hunting_shards': False,
+        'includes_lootshare': False,
+        'includes_kill_time_constraints': False,
+        'full_profit_coverage': False,
+        'note': 'Encounter share is not profit share. Missing reward tables and prices have unknown coin value.'
+    }
     # The evaluated subset MUST NEVER be mistaken for full profitability.
     subtotal_and_rare=subtotal+base_rare
     return {'pool':pool_id,'pool_name':POOLS[pool_id]['name'],'creature_rate':total_expected,'hotspot_override_percent':None if override_share is None else override_share*100,
@@ -587,6 +610,7 @@ def project_pool(params:dict, prices:dict, *, prices_live:bool=False, order_book
       'modifier_scenario_disclaimer':'Counterfactual on priced subset only; assumes same catch/pet conditions and base drop rates, not verified profit or a lower bound. Depth-priced scenarios are independently quoted at their own modeled volumes.',
       'bait_cost':cost_bait,'bait_price':bprice,'bait_price_source':bait_price_source,
       'unpriced':unpriced,'unmodelled':unmodelled,'priced':priced,'priced_drop_entries':len(priced),
+      'reward_coverage':coverage,
       'has_complete_loot':not (unpriced or unmodelled),
       'is_full_method_profit':False, 'prices_live':prices_live,
       'modifier_eligibility_verified':False,
