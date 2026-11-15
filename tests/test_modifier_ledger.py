@@ -96,3 +96,25 @@ def test_depth_prices_base_and_modifier_scenarios_independently():
     assert sum(d['base_no_looting_mf_expected_coins'] for d in magma)==pytest.approx(expected_base)
     assert result['base_no_looting_mf_priced_subtotal'] <= result['known_subtotal']
     assert result['is_full_method_profit'] is False
+
+def test_missing_table_coverage_is_encounter_weighted():
+    from engine.pools import project_pool
+    r=project_pool({'pool':'torrhus','reels_per_hour':1000,'fishing_level':50,'bait':'NONE'}, {})
+    c=r['reward_coverage']
+    expected_missing=sum(m['expected_per_hour'] for m in r['creatures'] if not m['has_drop_table'])
+    assert c['expected_creature_encounters_per_hour']==pytest.approx(r['creature_rate'])
+    assert c['missing_drop_table_encounters_per_hour']==pytest.approx(expected_missing)
+    assert c['missing_drop_table_encounter_share']==pytest.approx(expected_missing/r['creature_rate'])
+    assert 0<c['missing_drop_table_encounter_share']<1
+    assert c['unpriced_positive_ev_drop_rows']>0
+    assert c['full_profit_coverage'] is False
+    assert not c['includes_hunting_shards']
+    assert not c['includes_treasure']
+
+def test_zero_catches_coverage_share_is_undefined_not_zero_profit():
+    from engine.pools import project_pool
+    r=project_pool({'pool':'torrhus','reels_per_hour':0,'bait':'NONE'}, {})
+    c=r['reward_coverage']
+    assert c['expected_creature_encounters_per_hour']==0
+    assert c['missing_drop_table_encounter_share'] is None
+    assert c['full_profit_coverage'] is False
