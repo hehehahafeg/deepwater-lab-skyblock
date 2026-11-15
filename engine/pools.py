@@ -514,9 +514,22 @@ def project_pool(params:dict, prices:dict, *, prices_live:bool=False, order_book
                 mid = drop['market_id']
                 if mid and drop['expected_coins'] is not None and drop['expected_units'] > 0 and drop['price_source'] == 'bazaar-live':
                     quantities[mid] = quantities.get(mid, 0) + drop['expected_units']
+        # Quote the two scenarios at their OWN expected hourly volume.
+        # A shared depth price overstates or understates the base scenario
+        # whenever order-book levels have different prices.
+        base_quantities = {}
+        for entry in rows:
+            for drop in entry['drops']:
+                mid = drop['market_id']
+                if mid in quantities and drop['price_source'] == 'bazaar-live':
+                    base_quantities[mid] = base_quantities.get(mid, 0) + drop['base_no_looting_mf_expected_units']
         depth_prices = {}
+        base_depth_prices = {}
         for mid, quantity in quantities.items():
             depth_prices[mid] = executable_quote(order_books, mid, quantity, 'instant_sell')['unit_price']
+            base_quantity = base_quantities.get(mid, 0)
+            if base_quantity > 0:
+                base_depth_prices[mid] = executable_quote(order_books, mid, base_quantity, 'instant_sell')['unit_price']
         subtotal = base_rare = jackpot = 0.0
         priced = []
         for entry in rows:
@@ -526,7 +539,7 @@ def project_pool(params:dict, prices:dict, *, prices_live:bool=False, order_book
                     drop['unit_price'] = depth_prices[mid]
                     drop['price_source'] = 'bazaar-depth-indicative'
                     drop['expected_coins'] = drop['expected_units'] * depth_prices[mid]
-                    drop['base_no_looting_mf_expected_coins'] = drop['base_no_looting_mf_expected_units'] * depth_prices[mid]
+                    drop['base_no_looting_mf_expected_coins'] = drop['base_no_looting_mf_expected_units'] * base_depth_prices[mid]
                 if drop['expected_coins'] is not None:
                     priced.append({'mob': entry['name'], 'drop': drop['name'],
                                    'coins': drop['expected_coins'], 'price_type': drop['price_source']})
@@ -571,7 +584,7 @@ def project_pool(params:dict, prices:dict, *, prices_live:bool=False, order_book
       'known_subtotal_after_bait':subtotal_and_rare-cost_bait if cost_bait is not None else None,
       'base_no_looting_mf_priced_subtotal':base_no_modifier_priced_subtotal,
       'base_no_looting_mf_after_bait':base_no_modifier_priced_subtotal-cost_bait if cost_bait is not None else None,
-      'modifier_scenario_disclaimer':'Counterfactual on priced subset only; assumes same catch/pet conditions and base drop rates, not verified profit or a lower bound.',
+      'modifier_scenario_disclaimer':'Counterfactual on priced subset only; assumes same catch/pet conditions and base drop rates, not verified profit or a lower bound. Depth-priced scenarios are independently quoted at their own modeled volumes.',
       'bait_cost':cost_bait,'bait_price':bprice,'bait_price_source':bait_price_source,
       'unpriced':unpriced,'unmodelled':unmodelled,'priced':priced,'priced_drop_entries':len(priced),
       'has_complete_loot':not (unpriced or unmodelled),
