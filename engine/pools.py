@@ -585,10 +585,24 @@ def project_pool(params:dict, prices:dict, *, prices_live:bool=False, order_book
     unpriced_row_count = sum(d['expected_coins'] is None and d['expected_units'] > 0
                              for m in rows for d in m['drops'])
     missing_table_share = missing_table_catches / total_catches if total_catches > 0 else None
+    # Research queue: missing tables ranked by encounter frequency, not assumed
+    # coin value. Hotspot/base blends are already represented in these rates.
+    missing_table_priority = sorted(
+        ({'creature': m['name'], 'expected_encounters_per_hour': m['expected_per_hour'],
+          'share_of_all_creature_encounters': (
+              m['expected_per_hour'] / total_catches if total_catches > 0 else None),
+          'source': m['source'], 'profit_impact': 'unknown-until-drops-and-prices-verified'}
+         for m in rows if not m['has_drop_table'] and m['expected_per_hour'] > 0),
+        key=lambda x: (-x['expected_encounters_per_hour'], x['creature']))
+    missing_table_priority_share = (
+        sum(x['expected_encounters_per_hour'] for x in missing_table_priority[:3])
+        / missing_table_catches if missing_table_catches > 0 else None)
     coverage = {
         'expected_creature_encounters_per_hour': total_catches,
         'missing_drop_table_encounters_per_hour': missing_table_catches,
         'missing_drop_table_encounter_share': missing_table_share,
+        'missing_drop_table_research_priority': missing_table_priority,
+        'top_three_missing_table_encounter_share': missing_table_priority_share,
         'documented_drop_table_encounters_per_hour': known_table_catches,
         'priced_drop_rows': priced_row_count,
         'unpriced_positive_ev_drop_rows': unpriced_row_count,
