@@ -116,6 +116,16 @@ record('Silkbreeze',[
  d('Sublime Silk',None,1,1,.2,'rare'),d('Veilshroom Bunch',None,1,1,.01,'rare'),
  d('Helixis',None,1,1,.01,'rare'),d('Distant Echo',None,1,1,.01,'rare'),
  d('Aquamarine Dye',None,1,1,1/50_000,'jackpot')])
+# Magma Slug: 5 Magmafish guaranteed, 1 Lump of Magma plus a 50%
+# second lump, 2% Slug Boots, 1/5M Carmine Dye. The final baby slug
+# drops loot; Hunting shard extraction is a separate, unmodeled action.
+# Source: https://hypixelskyblock.minecraft.wiki/w/Magma_Slug
+record('Magma Slug',[
+ d('Magmafish',None,5,5),d('Lump of Magma',None,1,2,1,'common',1.5),
+ d('Slug Boots',None,1,1,.02,'rare'),
+ d('Carmine Dye',None,1,1,1/5_000_000,'jackpot')],
+ note='Only the final Baby Magma Slug drops loot. Hunting Fortune and shard extraction are excluded.')
+
 record('Thunder',[
  d('Thunder Fragment',None,1,1),d('Silver Magmafish',None,8,16),
  d('Flash I book',None,1,1,.015,'rare'),d('Carmine Dye',None,1,1,1/50_000,'jackpot')],
