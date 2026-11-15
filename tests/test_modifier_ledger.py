@@ -124,8 +124,8 @@ def test_missing_table_priority_sorted_by_expected_encounters():
     r=project_pool({'pool':'torrhus','reels_per_hour':1000,'fishing_level':50}, {})
     c=r['reward_coverage']
     q=c['missing_drop_table_research_priority']
-    assert len(q)==5
-    assert q[0]['creature']=='Haggard'
+    assert len(q)==4
+    assert q[0]['creature']=='Brineling'
     assert all(a['expected_encounters_per_hour']>=b['expected_encounters_per_hour']
                for a,b in zip(q,q[1:]))
     assert sum(x['expected_encounters_per_hour'] for x in q)==pytest.approx(
@@ -147,3 +147,18 @@ def test_zero_catch_priority_queue_is_empty():
     r=project_pool({'pool':'torrhus','reels_per_hour':0}, {})
     assert r['reward_coverage']['missing_drop_table_research_priority']==[]
     assert r['reward_coverage']['top_three_missing_table_encounter_share'] is None
+
+def test_haggard_official_loot_table_and_unpriced_routes():
+    from engine.pools import DROPS, project_pool
+    drops={d['name']:d for d in DROPS['Haggard']['drops']}
+    assert len(drops)==7
+    assert (drops['Helix Log']['min_quantity'],drops['Helix Log']['max_quantity'])==(8,16)
+    assert drops['Enchanted Bone']['chance']==pytest.approx(.02)
+    assert drops['Enchanted Helix Log']['chance']==pytest.approx(.05)
+    assert drops['Enchanted Ruby Veilshroom']['chance']==pytest.approx(.01)
+    assert drops['Aquamarine Dye']['chance']==pytest.approx(1/5_000_000)
+    assert all(d['market_id'] is None for d in drops.values())
+    r=project_pool({'pool':'torrhus','reels_per_hour':1000}, {})
+    assert next(m for m in r['creatures'] if m['name']=='Haggard')['has_drop_table']
+    assert 'Haggard' not in {x['creature'] for x in r['reward_coverage']['missing_drop_table_research_priority']}
+    assert r['is_full_method_profit'] is False
