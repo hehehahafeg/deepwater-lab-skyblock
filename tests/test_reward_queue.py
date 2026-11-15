@@ -25,3 +25,29 @@ def test_queue_marks_bazaar_hints_unverified():
 def test_queue_fails_closed(bad):
     with pytest.raises(ValueError):
         build_reward_queue(bad)
+
+def test_missing_auction_flag_never_implies_auction_eligibility():
+    result = build_reward_queue({'unassigned_drop_registry_hints': [
+        {'drop':'Tiki Mask','uses':[], 'registry_name_matches':[
+            {'id':'TIKI_MASK', 'bazaar_listed':False, 'npc_sell_price':None,
+             'can_auction':None, 'soulbound':None}]}]})
+    entry = result['queue'][0]
+    assert entry['auction_id_hints'] == []
+    assert entry['candidate_route'] == 'sale-route-unknown-or-restricted'
+    assert entry['market_route_verified'] is False
+
+def test_explicit_auction_permission_still_does_not_verify_sale_route():
+    result = build_reward_queue({'unassigned_drop_registry_hints': [
+        {'drop':'Tiki Mask','uses':[], 'registry_name_matches':[
+            {'id':'TIKI_MASK', 'bazaar_listed':False, 'npc_sell_price':None,
+             'can_auction':True, 'soulbound':None}]}]})
+    entry = result['queue'][0]
+    assert entry['auction_id_hints'] == ['TIKI_MASK']
+    assert entry['market_route_verified'] is False
+
+def test_soulbound_blocks_auction_hint():
+    result = build_reward_queue({'unassigned_drop_registry_hints': [
+        {'drop':'Tiki Mask','uses':[], 'registry_name_matches':[
+            {'id':'TIKI_MASK', 'bazaar_listed':False, 'npc_sell_price':None,
+             'can_auction':True, 'soulbound':'SOULBOUND'}]}]})
+    assert result['queue'][0]['auction_id_hints'] == []
