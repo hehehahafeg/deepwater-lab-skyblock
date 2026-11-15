@@ -138,7 +138,7 @@ def test_catalog_source_metadata_and_missing_creatures():
     summary=catalog_summary()
     assert summary['anytime_pools']==8
     assert summary['creatures']==55
-    assert summary['creature_drop_tables']==27
+    assert summary['creature_drop_tables']==29
     assert summary['drop_items']==157
     assert summary['source'].startswith('https://')
     assert all(x['source'].startswith('https://') for pool in public_catalog()['pools'] for x in pool['creatures'])
