@@ -31,8 +31,8 @@ def build_reward_queue(registry_reconciliation):
         bazaar_hints = [h['id'] for h in hints if h.get('bazaar_listed') is True]
         npc_hints = [{'id': h['id'], 'npc_sell_price': h['npc_sell_price']} for h in hints
                      if h.get('npc_sell_price') is not None]
-        auction_hints = [h['id'] for h in hints if h.get('can_auction') is not False
-                         and not h.get('soulbound')]
+        auction_hints = [h['id'] for h in hints if h.get('can_auction') is True
+                         and h.get('soulbound') in (None, False)]
         if not hints:
             route = 'unmatched-registry-name'
         elif bazaar_hints:
@@ -42,7 +42,7 @@ def build_reward_queue(registry_reconciliation):
         elif auction_hints:
             route = 'auction-candidate-needs-live-price'
         else:
-            route = 'no-confirmed-sale-route'
+            route = 'sale-route-unknown-or-restricted'
         score = 10 * len(occurrences)
         score += 20 if any(d['tier'] == 'common' for d in occurrences) else 0
         score += 8 if any(d['tier'] == 'rare' for d in occurrences) else 0
@@ -50,6 +50,7 @@ def build_reward_queue(registry_reconciliation):
         queue.append({'reward': entry['drop'], 'priority_score': score,
                       'candidate_route': route, 'bazaar_id_hints': bazaar_hints,
                       'npc_hints': npc_hints, 'auction_id_hints': auction_hints,
+                      'market_route_verified': False,
                       'occurrences': occurrences, 'verified_profit_coins': None,
                       'status': 'requires-verification'})
     queue.sort(key=lambda r: (-r['priority_score'], r['reward']))
