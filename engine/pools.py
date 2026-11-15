@@ -152,6 +152,25 @@ record('Pyroclastic Worm',[
  d('Carmine Dye',None,1,1,1/2_500_000,'jackpot')],
  note='Base direct-kill drops only. Lootshare differs: 2 Magmafish, 20% scale, 0.2% Charm I. Non-item coins excluded.')
 
+# Source: https://hypixelskyblock.minecraft.wiki/w/Lava_Flame
+record('Lava Flame',[
+ d('Magmafish','MAGMA_FISH',40,40),d('Flaming Heart',None,1,1),
+ d('Flaming Chestplate',None,1,1,.02,'rare'),
+ d('Carmine Dye',None,1,1,1/2_500_000,'jackpot')],
+ note='Direct-kill drops only; loot share, Hunting shards, and 273 non-item coins are excluded.')
+# Source: https://hypixelskyblock.minecraft.wiki/w/Fire_Eel
+record('Fire Eel',[
+ d('Magmafish','MAGMA_FISH',50,50),d('Orb of Energy',None,1,1),
+ d('Staff of the Volcano',None,1,1,.05,'rare'),
+ d('Carmine Dye',None,1,1,1/2_500_000,'jackpot')],
+ note='Direct-kill drops only; loot share, Hunting shards, and 303 non-item coins are excluded.')
+# Source: https://hypixelskyblock.minecraft.wiki/w/Taurus
+record('Taurus',[
+ d('Horn of Taurus',None,1,1),d('Silver Magmafish',None,1,1),
+ d('Taurus Helmet',None,1,1,.02,'rare'),
+ d('Carmine Dye',None,1,1,1/2_500_000,'jackpot')],
+ note='Direct-kill drops only; loot share has different rewards, Hunting shards and 393 non-item coins are excluded.')
+
 record('Thunder',[
  d('Thunder Fragment',None,1,1),d('Silver Magmafish',None,8,16),
  d('Flash I book',None,1,1,.015,'rare'),d('Carmine Dye',None,1,1,1/50_000,'jackpot')],
