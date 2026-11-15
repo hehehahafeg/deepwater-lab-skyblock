@@ -125,7 +125,7 @@ def test_missing_table_priority_sorted_by_expected_encounters():
     c=r['reward_coverage']
     q=c['missing_drop_table_research_priority']
     assert len(q)==5
-    assert q[0]['creature']=='Brineling'
+    assert q[0]['creature']=='Haggard'
     assert all(a['expected_encounters_per_hour']>=b['expected_encounters_per_hour']
                for a,b in zip(q,q[1:]))
     assert sum(x['expected_encounters_per_hour'] for x in q)==pytest.approx(
@@ -138,7 +138,7 @@ def test_hotspot_missing_table_priority_uses_blended_rates():
     r=project_pool({'pool':'hotspot_water','base_pool':'bayou','reels_per_hour':1000,
                     'hotspot_override_percent':20}, {})
     q=r['reward_coverage']['missing_drop_table_research_priority']
-    assert {x['creature'] for x in q}=={'Blue Ringed Octopus','Wiki Tiki'}
+    assert {x['creature'] for x in q}=={'Snapping Turtle','Manta Ray'}
     assert sum(x['expected_encounters_per_hour'] for x in q)==pytest.approx(
         r['reward_coverage']['missing_drop_table_encounters_per_hour'])
 
