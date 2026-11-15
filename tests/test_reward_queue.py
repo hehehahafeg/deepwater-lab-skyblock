@@ -51,3 +51,30 @@ def test_soulbound_blocks_auction_hint():
             {'id':'TIKI_MASK', 'bazaar_listed':False, 'npc_sell_price':None,
              'can_auction':True, 'soulbound':'SOULBOUND'}]}]})
     assert result['queue'][0]['auction_id_hints'] == []
+
+def test_reward_queue_retains_multiple_same_name_drop_rows(monkeypatch):
+    import engine.reward_queue as module
+    from copy import deepcopy
+    source = deepcopy(module.DROPS)
+    source['Synthetic Test Creature'] = {'drops':[
+        {'name':'Repeated Drop','market_id':None,'tier':'common','chance':1.0,'expected_quantity':2},
+        {'name':'Repeated Drop','market_id':None,'tier':'rare','chance':.1,'expected_quantity':3},
+    ]}
+    monkeypatch.setattr(module,'DROPS',source)
+    r=module.build_reward_queue({'unassigned_drop_registry_hints':[
+        {'drop':'Repeated Drop','uses':[{'creature':'Synthetic Test Creature'}],'registry_name_matches':[]}
+    ]})
+    row=r['queue'][0]
+    assert len(row['occurrences']) == 2
+    assert row['summed_unweighted_expected_units_per_kill'] == pytest.approx(2.3)
+    assert row['market_route_verified'] is False
+    assert row['verified_profit_coins'] is None
+
+def test_reward_queue_base_ev_units_not_profit():
+    r=build_reward_queue({'unassigned_drop_registry_hints':[
+        {'drop':'Carmine Dye','uses':[{'creature':'Ragnarok'}],'registry_name_matches':[]}
+    ]})
+    row=r['queue'][0]
+    assert row['summed_unweighted_expected_units_per_kill'] == pytest.approx(1/50_000)
+    assert 'NOT expected catches/hour' in row['expected_units_warning']
+    assert row['verified_profit_coins'] is None
