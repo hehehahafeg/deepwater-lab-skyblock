@@ -465,6 +465,9 @@ def project_pool(params:dict, prices:dict, *, prices_live:bool=False, order_book
                 rolls=min(1.0, rolls)
                 per_mob=d['expected_quantity']*quantity_multiplier*rolls
                 qty=kills*per_mob*(pet_multiplier if mob['name']=='Squid' else 1)
+                # Counterfactual: same catches and pet assumption, but no speculative
+                # Looting/MF eligibility. This is NOT a verified lower bound.
+                base_qty=kills*d['expected_quantity']*d['chance']*(pet_multiplier if mob['name']=='Squid' else 1)
                 price=None;price_type=None
                 # Bazaar prices are player INSTANT SELL for drops, and no price
                 # is inferred for AH items. Manual item prices keyed by exact item name.
@@ -491,6 +494,9 @@ def project_pool(params:dict, prices:dict, *, prices_live:bool=False, order_book
                            'base_chance':d['chance'],'adjusted_chance':min(1,rolls),'expected_rolls_per_kill':rolls,
                            'standard_modifiers_modeled':standard_roll,'expected_quantity_per_kill':d['expected_quantity'], 'quantity_modifier_multiplier':quantity_multiplier, 'expected_units':qty,
                            'tier':d['tier'],'unit_price':price,'price_source':price_type,'expected_coins':val,
+                           'base_no_looting_mf_expected_units':base_qty,
+                           'base_no_looting_mf_expected_coins':base_qty*price if price is not None else None,
+                           'heuristic_modifier_delta_units':qty-base_qty,
                            'modifier_eligibility_status': {
                                'looting': modifier_status[('looting','dyes_and_jackpots' if not standard_roll else 'direct_kill_items')],
                                'magic_find': modifier_status[('magic_find','dyes_and_jackpots' if not standard_roll else 'direct_kill_items')],
@@ -520,12 +526,17 @@ def project_pool(params:dict, prices:dict, *, prices_live:bool=False, order_book
                     drop['unit_price'] = depth_prices[mid]
                     drop['price_source'] = 'bazaar-depth-indicative'
                     drop['expected_coins'] = drop['expected_units'] * depth_prices[mid]
+                    drop['base_no_looting_mf_expected_coins'] = drop['base_no_looting_mf_expected_units'] * depth_prices[mid]
                 if drop['expected_coins'] is not None:
                     priced.append({'mob': entry['name'], 'drop': drop['name'],
                                    'coins': drop['expected_coins'], 'price_type': drop['price_source']})
                     if drop['tier'] == 'jackpot': jackpot += drop['expected_coins']
                     elif drop['tier'] == 'rare': base_rare += drop['expected_coins']
                     else: subtotal += drop['expected_coins']
+    base_no_modifier_priced_subtotal=sum(
+        d['base_no_looting_mf_expected_coins']
+        for mob in rows for d in mob['drops']
+        if d['base_no_looting_mf_expected_coins'] is not None and d['tier'] != 'jackpot')
     # Operating costs: require current instant-BUY input price or a manual price.
     bait=params.get('bait','NONE')
     saved=bounded_number(params.get('bait_saved_percent',10),'Bait saved percent',0,100)
@@ -558,6 +569,9 @@ def project_pool(params:dict, prices:dict, *, prices_live:bool=False, order_book
       'creatures':rows,'known_common_revenue':subtotal,'known_rare_base_ev':base_rare,
       'known_jackpot_base_ev':jackpot,'known_subtotal':subtotal_and_rare,
       'known_subtotal_after_bait':subtotal_and_rare-cost_bait if cost_bait is not None else None,
+      'base_no_looting_mf_priced_subtotal':base_no_modifier_priced_subtotal,
+      'base_no_looting_mf_after_bait':base_no_modifier_priced_subtotal-cost_bait if cost_bait is not None else None,
+      'modifier_scenario_disclaimer':'Counterfactual on priced subset only; assumes same catch/pet conditions and base drop rates, not verified profit or a lower bound.',
       'bait_cost':cost_bait,'bait_price':bprice,'bait_price_source':bait_price_source,
       'unpriced':unpriced,'unmodelled':unmodelled,'priced':priced,'priced_drop_entries':len(priced),
       'has_complete_loot':not (unpriced or unmodelled),
