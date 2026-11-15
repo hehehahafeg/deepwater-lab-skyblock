@@ -39,3 +39,18 @@ def test_unknown_modifier_or_channel_rejected():
         build_modifier_ledger({'imaginary':{}})
     with pytest.raises(ValueError):
         build_modifier_ledger({'looting':{'fishing_treasure':{}}})
+
+def test_project_pool_surfaces_unverified_modifier_provenance():
+    from engine.pools import project_pool
+    r=project_pool({'pool':'crimson_lava','looting_level':5,'magic_find':250,'reels_per_hour':100}, {})
+    assert r['modifier_eligibility_verified'] is False
+    assert r['modifier_ledger_summary']['tracked_interactions'] == sum(map(len,MODIFIER_CHANNELS.values()))
+    assert r['modifier_ledger_summary']['verified_profit_modifier_count'] == 0
+    leech=next(x for x in r['creatures'] if x['name']=='Lava Leech')
+    magmafish=next(x for x in leech['drops'] if x['name']=='Magmafish')
+    dye=next(x for x in leech['drops'] if x['name']=='Carmine Dye')
+    assert magmafish['modifier_calculation_provenance']=='generalized-unverified-heuristic'
+    assert magmafish['modifier_eligibility_status']['looting']=='unverified'
+    assert dye['modifier_calculation_provenance']=='base-chance-no-generalized-modifier'
+    assert dye['modifier_eligibility_status']['magic_find']=='unverified'
+    assert r['is_full_method_profit'] is False
