@@ -51,3 +51,25 @@ def test_pyroclastic_worm_source_rates_and_partial_profit():
     assert 'Lootshare' in DROPS['Pyroclastic Worm']['note']
     result = project_pool({'pool':'crimson_lava','reels_per_hour':100}, {})
     assert result['is_full_method_profit'] is False
+
+def test_all_nine_crimson_lava_creatures_have_base_drop_tables():
+    assert len(POOLS['crimson_lava']['creatures']) == 9
+    assert all(c.name in DROPS for c in POOLS['crimson_lava']['creatures'])
+
+def test_lava_flame_fire_eel_taurus_wiki_base_drops():
+    cases = {
+        'Lava Flame': ('Magmafish',40,'Flaming Heart','Flaming Chestplate',.02),
+        'Fire Eel': ('Magmafish',50,'Orb of Energy','Staff of the Volcano',.05),
+        'Taurus': ('Silver Magmafish',1,'Horn of Taurus','Taurus Helmet',.02),
+    }
+    for creature, (fish,quantity,guaranteed,rare,chance) in cases.items():
+        drops = {d['name']:d for d in DROPS[creature]['drops']}
+        assert drops[fish]['expected_quantity'] == quantity
+        assert drops[guaranteed]['chance'] == 1
+        assert drops[rare]['chance'] == chance
+        assert drops['Carmine Dye']['chance'] == 1/2_500_000
+        assert DROPS[creature]['source'].endswith(creature.replace(' ','_'))
+    assert DROPS['Lava Flame']['drops'][0]['market_id'] == 'MAGMA_FISH'
+    assert DROPS['Fire Eel']['drops'][0]['market_id'] == 'MAGMA_FISH'
+    assert DROPS['Taurus']['drops'][0]['market_id'] is None
+    assert project_pool({'pool':'crimson_lava','reels_per_hour':100}, {})['is_full_method_profit'] is False
