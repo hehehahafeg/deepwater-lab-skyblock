@@ -121,7 +121,7 @@ record('Silkbreeze',[
 # drops loot; Hunting shard extraction is a separate, unmodeled action.
 # Source: https://hypixelskyblock.minecraft.wiki/w/Magma_Slug
 record('Magma Slug',[
- d('Magmafish',None,5,5),d('Lump of Magma',None,1,2,1,'common',1.5),
+ d('Magmafish','MAGMA_FISH',5,5),d('Lump of Magma',None,1,2,1,'common',1.5),
  d('Slug Boots',None,1,1,.02,'rare'),
  d('Carmine Dye',None,1,1,1/5_000_000,'jackpot')],
  note='Only the final Baby Magma Slug drops loot. Hunting Fortune and shard extraction are excluded.')
@@ -129,10 +129,19 @@ record('Magma Slug',[
 # Moogma: verified base drop table, excluding Loot Share and shard extraction.
 # Source: https://hypixelskyblock.minecraft.wiki/w/Moogma
 record('Moogma',[
- d('Magmafish',None,8,8),d('Moogma Pelt',None,1,2,1,'common',1.5),
+ d('Magmafish','MAGMA_FISH',8,8),d('Moogma Pelt',None,1,2,1,'common',1.5),
  d('Moogma Leggings',None,1,1,.02,'rare'),
  d('Carmine Dye',None,1,1,1/5_000_000,'jackpot')],
  note='Moogma lootshare has separate lower quantities/chances; not included in ordinary kills.')
+
+# Source: https://hypixelskyblock.minecraft.wiki/w/Lava_Leech
+# Separate Loot Share rates and Hunting shard extraction are NOT included.
+record('Lava Leech',[
+ d('Magmafish','MAGMA_FISH',20,20),d('Cup of Blood',None,1,1),
+ d('Blade of the Volcano',None,1,1,.05,'rare'),
+ d("Pitchin' Koi",None,1,1,.004,'rare'),
+ d('Carmine Dye',None,1,1,1/2_500_000,'jackpot')],
+ note='Base kill drops only. Loot Share has separate probabilities; Hunting shard extraction and non-item coin drops are excluded.')
 
 record('Thunder',[
  d('Thunder Fragment',None,1,1),d('Silver Magmafish',None,8,16),
