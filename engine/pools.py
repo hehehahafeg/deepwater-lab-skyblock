@@ -452,6 +452,10 @@ def project_pool(params:dict, prices:dict, *, prices_live:bool=False, order_book
                     rolls*=1+0.15*looting
                     if rolls < 0.05:
                         rolls*=1+magic_find/100
+                # A single Bernoulli drop row cannot fire more than once per kill.
+                # Previously Looting could inflate guaranteed 100% rows above 100%,
+                # producing fictitious items and coins (e.g. 175% at Looting V).
+                rolls=min(1.0, rolls)
                 per_mob=d['expected_quantity']*rolls
                 qty=kills*per_mob*(pet_multiplier if mob['name']=='Squid' else 1)
                 price=None;price_type=None
