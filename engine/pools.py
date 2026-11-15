@@ -80,6 +80,18 @@ def record(mob: str, rows, source=None, note=None):
 
 def d(n,mid,mn,mx,p=1,tier='common',expected=None):return (n,mid,mn,mx,p,tier,*((expected,) if expected is not None else ()))
 
+# Official Haggard table, reviewed 2026-11-14. No Bazaar identifiers
+# inferred for unverified sale routes; non-item 33 coins excluded.
+record('Haggard',[
+ d('Bone',None,2,4),
+ d('Helix Log',None,8,16),
+ d('Ruby Veilshroom',None,1,2),
+ d('Enchanted Bone',None,1,1,.02),
+ d('Enchanted Helix Log',None,1,1,.05),
+ d('Enchanted Ruby Veilshroom',None,1,1,.01,'rare'),
+ d('Aquamarine Dye',None,1,1,1/5_000_000,'jackpot')
+],note='Official direct-kill loot table; 33 non-item coins and Hunting shard charm rewards excluded. Market IDs require independent Bazaar verification.')
+
 record('Squid',[
  d('Ink Sac','INK_SACK',2,3),d('Lily Pad','WATER_LILY',1,2),
  d('Enchanted Ink Sac','ENCHANTED_INK_SACK',1,1,.005,'rare'),
