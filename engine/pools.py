@@ -414,19 +414,27 @@ def project_pool(params:dict, prices:dict, *, prices_live:bool=False, order_book
     bait=params.get('bait','NONE')
     saved=bounded_number(params.get('bait_saved_percent',10),'Bait saved percent',0,100)
     bprice=0.0 if bait=='NONE' else None
+    bait_price_source='none' if bait=='NONE' else None
     if bait!='NONE':
         record=prices.get(bait)
         if isinstance(record,dict):
             try:
                 v=float(record['instant_buy'])
-                if isfinite(v) and v>0:bprice=v
+                if isfinite(v) and v>0:
+                    bprice=v
+                    bait_price_source='bazaar-live' if prices_live else 'bazaar-unverified'
             except (ValueError,TypeError,KeyError,OverflowError):pass
         if bprice is None and params.get('manual_bait_price') is not None:
             v=bounded_number(params['manual_bait_price'],'Manual bait price',0,1e10)
-            if v>0:bprice=v
+            if v>0:
+                bprice=v
+                bait_price_source='manual-unverified'
     bait_units = reels*(1-saved/100)
-    if depth_pricing and bait!='NONE' and bprice is not None and bait_units>0:
+    if depth_pricing and bait!='NONE' and bait_units>0:
+        if bait_price_source != 'bazaar-live':
+            raise ValueError('Depth pricing requires a live Bazaar bait price; manual bait prices cannot be depth-quoted')
         bprice=executable_quote(order_books, bait, bait_units, 'instant_buy')['unit_price']
+        bait_price_source='bazaar-depth-indicative'
     cost_bait=(bait_units*bprice) if bprice is not None else None
     # The evaluated subset MUST NEVER be mistaken for full profitability.
     subtotal_and_rare=subtotal+base_rare
@@ -434,7 +442,7 @@ def project_pool(params:dict, prices:dict, *, prices_live:bool=False, order_book
       'creatures':rows,'known_common_revenue':subtotal,'known_rare_base_ev':base_rare,
       'known_jackpot_base_ev':jackpot,'known_subtotal':subtotal_and_rare,
       'known_subtotal_after_bait':subtotal_and_rare-cost_bait if cost_bait is not None else None,
-      'bait_cost':cost_bait,'bait_price':bprice,
+      'bait_cost':cost_bait,'bait_price':bprice,'bait_price_source':bait_price_source,
       'unpriced':unpriced,'unmodelled':unmodelled,'priced':priced,'priced_drop_entries':len(priced),
       'has_complete_loot':not (unpriced or unmodelled),
       'is_full_method_profit':False, 'prices_live':prices_live,
