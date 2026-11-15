@@ -118,3 +118,32 @@ def test_zero_catches_coverage_share_is_undefined_not_zero_profit():
     assert c['expected_creature_encounters_per_hour']==0
     assert c['missing_drop_table_encounter_share'] is None
     assert c['full_profit_coverage'] is False
+
+def test_missing_table_priority_sorted_by_expected_encounters():
+    from engine.pools import project_pool
+    r=project_pool({'pool':'torrhus','reels_per_hour':1000,'fishing_level':50}, {})
+    c=r['reward_coverage']
+    q=c['missing_drop_table_research_priority']
+    assert len(q)==5
+    assert q[0]['creature']=='Brineling'
+    assert all(a['expected_encounters_per_hour']>=b['expected_encounters_per_hour']
+               for a,b in zip(q,q[1:]))
+    assert sum(x['expected_encounters_per_hour'] for x in q)==pytest.approx(
+        c['missing_drop_table_encounters_per_hour'])
+    assert all(x['profit_impact']=='unknown-until-drops-and-prices-verified' for x in q)
+    assert 0<c['top_three_missing_table_encounter_share']<=1
+
+def test_hotspot_missing_table_priority_uses_blended_rates():
+    from engine.pools import project_pool
+    r=project_pool({'pool':'hotspot_water','base_pool':'bayou','reels_per_hour':1000,
+                    'hotspot_override_percent':20}, {})
+    q=r['reward_coverage']['missing_drop_table_research_priority']
+    assert {x['creature'] for x in q}=={'Blue Ringed Octopus','Wiki Tiki'}
+    assert sum(x['expected_encounters_per_hour'] for x in q)==pytest.approx(
+        r['reward_coverage']['missing_drop_table_encounters_per_hour'])
+
+def test_zero_catch_priority_queue_is_empty():
+    from engine.pools import project_pool
+    r=project_pool({'pool':'torrhus','reels_per_hour':0}, {})
+    assert r['reward_coverage']['missing_drop_table_research_priority']==[]
+    assert r['reward_coverage']['top_three_missing_table_encounter_share'] is None
