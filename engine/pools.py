@@ -143,6 +143,15 @@ record('Lava Leech',[
  d('Carmine Dye',None,1,1,1/2_500_000,'jackpot')],
  note='Base kill drops only. Loot Share has separate probabilities; Hunting shard extraction and non-item coin drops are excluded.')
 
+# https://hypixelskyblock.minecraft.wiki/w/Pyroclastic_Worm
+# Lootshare and non-item coins (276 per kill) remain separately unmodeled.
+record('Pyroclastic Worm',[
+ d('Magmafish','MAGMA_FISH',10,10),
+ d('Pyroclastic Scale',None,1,1),
+ d('Charm I enchanted book',None,1,1,.01,'rare'),
+ d('Carmine Dye',None,1,1,1/2_500_000,'jackpot')],
+ note='Base direct-kill drops only. Lootshare differs: 2 Magmafish, 20% scale, 0.2% Charm I. Non-item coins excluded.')
+
 record('Thunder',[
  d('Thunder Fragment',None,1,1),d('Silver Magmafish',None,8,16),
  d('Flash I book',None,1,1,.015,'rare'),d('Carmine Dye',None,1,1,1/50_000,'jackpot')],
