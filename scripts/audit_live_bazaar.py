@@ -12,6 +12,7 @@ from engine.market_integrity import validate_snapshot
 from engine.market_audit import audit_market_ids
 from engine.item_registry_audit import reconcile_registry
 from engine.reward_queue import build_reward_queue
+from engine.pool_coverage import audit_pool_coverage
 
 ITEMS_URL = 'https://api.hypixel.net/v2/resources/skyblock/items'
 
@@ -43,6 +44,7 @@ def run():
         for hint in entry['registry_name_matches']:
             hint['bazaar_listed'] = hint['id'] in valid
     result['unpriced_reward_research_queue'] = build_reward_queue(result['registry_reconciliation'])
+    result['pool_structural_coverage'] = audit_pool_coverage()
     # Price evidence for *candidate IDs only*: never feed these quotes into EV
     # until drop identity, eligibility and actual market route are verified.
     for reward in result['unpriced_reward_research_queue']['queue']:
@@ -62,6 +64,7 @@ def run():
     })
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     OUTPUT.write_text(json.dumps(result, indent=2, sort_keys=True) + '\n')
+    print('Pool structural coverage:', json.dumps([{'pool': x['pool_id'], 'creatures': x['creature_count'], 'tables': x['creatures_with_drop_tables'], 'unassigned_rows': x['drop_rows_without_market_ids']} for x in result['pool_structural_coverage']['pools']], sort_keys=True))
     print('Top reward research priorities:', json.dumps([{'reward': x['reward'], 'route': x['candidate_route'], 'score': x['priority_score']} for x in result['unpriced_reward_research_queue']['queue'][:15]], sort_keys=True))
     print('Registry reward coverage:', json.dumps({key: value for key, value in result['registry_reconciliation'].items() if key.startswith('unassigned_') and isinstance(value, int)}, sort_keys=True))
     print('Registry classifications:', json.dumps(result['registry_reconciliation']['missing_candidate_id_reconciliation'], sort_keys=True))
