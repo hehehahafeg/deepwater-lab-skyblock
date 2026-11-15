@@ -126,6 +126,14 @@ record('Magma Slug',[
  d('Carmine Dye',None,1,1,1/5_000_000,'jackpot')],
  note='Only the final Baby Magma Slug drops loot. Hunting Fortune and shard extraction are excluded.')
 
+# Moogma: verified base drop table, excluding Loot Share and shard extraction.
+# Source: https://hypixelskyblock.minecraft.wiki/w/Moogma
+record('Moogma',[
+ d('Magmafish',None,8,8),d('Moogma Pelt',None,1,2,1,'common',1.5),
+ d('Moogma Leggings',None,1,1,.02,'rare'),
+ d('Carmine Dye',None,1,1,1/5_000_000,'jackpot')],
+ note='Moogma lootshare has separate lower quantities/chances; not included in ordinary kills.')
+
 record('Thunder',[
  d('Thunder Fragment',None,1,1),d('Silver Magmafish',None,8,16),
  d('Flash I book',None,1,1,.015,'rare'),d('Carmine Dye',None,1,1,1/50_000,'jackpot')],
