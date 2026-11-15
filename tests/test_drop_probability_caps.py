@@ -19,7 +19,8 @@ def test_guaranteed_lava_magmafish_not_multiplied_by_looting(looting_level):
     creature = next(c for c in result['creatures'] if c['name']=='Lava Leech')
     assert drop['adjusted_chance'] == 1
     assert drop['expected_rolls_per_kill'] == 1
-    assert drop['expected_units'] == pytest.approx(creature['expected_kills_per_hour']*20)
+    assert drop['quantity_modifier_multiplier'] == pytest.approx(1+0.15*looting_level)
+    assert drop['expected_units'] == pytest.approx(creature['expected_kills_per_hour']*20*(1+0.15*looting_level))
     assert drop['expected_coins'] == pytest.approx(drop['expected_units']*100)
 
 
