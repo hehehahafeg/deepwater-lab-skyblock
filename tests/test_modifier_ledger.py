@@ -75,3 +75,24 @@ def test_unpriced_counterfactual_does_not_invent_coins():
     assert r['known_subtotal']==0
     assert any(d['base_no_looting_mf_expected_coins'] is None for c in r['creatures'] for d in c['drops'])
     assert 'not verified profit' in r['modifier_scenario_disclaimer']
+
+def test_depth_prices_base_and_modifier_scenarios_independently():
+    from engine.pools import project_pool
+    p={'pool':'crimson_lava','reels_per_hour':100,'looting_level':5,
+       'magic_find':0,'bait':'NONE'}
+    prices={'MAGMA_FISH':{'instant_sell':100}}
+    book={'MAGMA_FISH':{'buy_summary':[
+        {'pricePerUnit':100,'amount':500},
+        {'pricePerUnit':10,'amount':1000000}]}}
+    result=project_pool(p,prices,prices_live=True,order_books=book,depth_pricing=True)
+    magma=[d for c in result['creatures'] for d in c['drops']
+           if d['market_id']=='MAGMA_FISH']
+    modified=sum(d['expected_units'] for d in magma)
+    base=sum(d['base_no_looting_mf_expected_units'] for d in magma)
+    assert modified > base > 500
+    expected_mod=500*100+(modified-500)*10
+    expected_base=500*100+(base-500)*10
+    assert sum(d['expected_coins'] for d in magma)==pytest.approx(expected_mod)
+    assert sum(d['base_no_looting_mf_expected_coins'] for d in magma)==pytest.approx(expected_base)
+    assert result['base_no_looting_mf_priced_subtotal'] <= result['known_subtotal']
+    assert result['is_full_method_profit'] is False
