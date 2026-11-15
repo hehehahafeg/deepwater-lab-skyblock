@@ -166,7 +166,7 @@ record('Fire Eel',[
  note='Direct-kill drops only; loot share, Hunting shards, and 303 non-item coins are excluded.')
 # Source: https://hypixelskyblock.minecraft.wiki/w/Taurus
 record('Taurus',[
- d('Horn of Taurus',None,1,1),d('Silver Magmafish',None,1,1),
+ d('Horn of Taurus',None,1,1),d('Silver Magmafish','MAGMA_FISH_SILVER',1,1),
  d('Taurus Helmet',None,1,1,.02,'rare'),
  d('Carmine Dye',None,1,1,1/2_500_000,'jackpot')],
  note='Direct-kill drops only; loot share has different rewards, Hunting shards and 393 non-item coins are excluded.')
@@ -182,7 +182,7 @@ record('Fried Chicken',[
 record('Volcanic Snail',[
  d('Magmafish','MAGMA_FISH',2,4),
  d('Seared Escargot',None,1,1,.04,'rare'),
- d('Silver Magmafish',None,1,1,.01,'rare'),
+ d('Silver Magmafish','MAGMA_FISH_SILVER',1,1,.01,'rare'),
  d('Carmine Dye',None,1,1,1/5_000_000,'jackpot')],
  note='Direct kill only; 90 non-item coins excluded.')
 record('Fireproof Witch',[
@@ -195,20 +195,20 @@ record('Fireproof Witch',[
  d('Carmine Dye',None,1,1,1/2_500_000,'jackpot')],
  note='Direct kill only; 187 non-item coins excluded. May 2026 revised loot table.')
 record('Magma Pillar',[
- d('Silver Magmafish',None,2,4),
+ d('Silver Magmafish','MAGMA_FISH_SILVER',2,4),
  d('Enchanted Magma Cream',None,2,4),
  d('Pyroclasm VI enchanted book',None,1,1,.0005,'rare'),
  d('Carmine Dye',None,1,1,1/2_500_000,'jackpot')],
  note='Direct kill only; 330 non-item coins excluded.')
 record('Fiery Scuttler',[
  d('Scorched Crab Stick',None,1,1),
- d('Silver Magmafish',None,8,16),
+ d('Silver Magmafish','MAGMA_FISH_SILVER',8,16),
  d('Severed Pincer',None,1,1,.002,'rare'),
  d('Scuttler Shell',None,1,1,.001,'rare'),
  d('Carmine Dye',None,1,1,1/50_000,'jackpot')],
  note='Direct kill only; 582 non-item coins excluded. Combat time and spawned companions not included.')
 record('Ragnarok',[
- d('Silver Magmafish',None,16,32),
+ d('Silver Magmafish','MAGMA_FISH_SILVER',16,32),
  d("Bobbin' Scriptures",None,1,1,.01,'rare'),
  d('Chain of the End Times',None,1,1,.01,'rare'),
  d('Brimstone Handle',None,1,1,.005,'rare'),
@@ -217,11 +217,11 @@ record('Ragnarok',[
  note='Direct kill only; 3060 non-item coins excluded. Ragnarok has invulnerability phase and high kill-time cost.')
 
 record('Thunder',[
- d('Thunder Fragment',None,1,1),d('Silver Magmafish',None,8,16),
+ d('Thunder Fragment',None,1,1),d('Silver Magmafish','MAGMA_FISH_SILVER',8,16),
  d('Flash I book',None,1,1,.015,'rare'),d('Carmine Dye',None,1,1,1/50_000,'jackpot')],
  note='Flash I book is a major non-Bazaar-valued drop and MUST be included before net profit can be trusted.')
 record('Lord Jawbus',[
- d('Magma Lord Fragment',None,1,1),d('Silver Magmafish',None,16,32),
+ d('Magma Lord Fragment',None,1,1),d('Silver Magmafish','MAGMA_FISH_SILVER',16,32),
  d('Lord Jawbus Shard',None,1,1,.02,'rare'),d("Bobbin’ Scriptures",None,1,1,.01,'rare'),
  d('Radioactive Vial',None,1,1,.005,'rare'), d('Carmine Dye',None,1,1,1/50_000,'jackpot')],
  note='Fight has follower phases; bait and high catch rates alone cannot establish achievable kills/hour.')
