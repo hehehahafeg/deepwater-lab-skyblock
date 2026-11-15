@@ -448,15 +448,19 @@ def project_pool(params:dict, prices:dict, *, prices_live:bool=False, order_book
                 # Dyes and mutually exclusive pet rolls need separate rules.
                 standard_roll=not d['name'].endswith((' Dye',' Pet'))
                 rolls=d['chance']
+                # Guaranteed stack drops use Looting as an expected quantity
+                # multiplier, not as an impossible >100% Bernoulli probability.
+                quantity_multiplier=1.0
                 if standard_roll:
-                    rolls*=1+0.15*looting
-                    if rolls < 0.05:
-                        rolls*=1+magic_find/100
+                    if d['chance'] >= 1:
+                        quantity_multiplier=1+0.15*looting
+                    else:
+                        rolls*=1+0.15*looting
+                        if rolls < 0.05:
+                            rolls*=1+magic_find/100
                 # A single Bernoulli drop row cannot fire more than once per kill.
-                # Previously Looting could inflate guaranteed 100% rows above 100%,
-                # producing fictitious items and coins (e.g. 175% at Looting V).
                 rolls=min(1.0, rolls)
-                per_mob=d['expected_quantity']*rolls
+                per_mob=d['expected_quantity']*quantity_multiplier*rolls
                 qty=kills*per_mob*(pet_multiplier if mob['name']=='Squid' else 1)
                 price=None;price_type=None
                 # Bazaar prices are player INSTANT SELL for drops, and no price
@@ -482,7 +486,7 @@ def project_pool(params:dict, prices:dict, *, prices_live:bool=False, order_book
                     else:subtotal+=val
                 entry['drops'].append({'name':d['name'],'market_id':d['market_id'],
                            'base_chance':d['chance'],'adjusted_chance':min(1,rolls),'expected_rolls_per_kill':rolls,
-                           'standard_modifiers_modeled':standard_roll,'expected_quantity_per_kill':d['expected_quantity'], 'expected_units':qty,
+                           'standard_modifiers_modeled':standard_roll,'expected_quantity_per_kill':d['expected_quantity'], 'quantity_modifier_multiplier':quantity_multiplier, 'expected_units':qty,
                            'tier':d['tier'],'unit_price':price,'price_source':price_type,'expected_coins':val,
                            'source':drop_info['source']})
         rows.append(entry)
