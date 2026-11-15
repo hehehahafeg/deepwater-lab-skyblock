@@ -3,6 +3,7 @@ import time
 import threading
 import math
 import requests
+from engine.market_integrity import validate_snapshot, MAX_AGE_SECONDS
 
 URL = 'https://api.hypixel.net/v2/skyblock/bazaar'
 TTL_SECONDS = 180
@@ -35,6 +36,7 @@ class Bazaar:
         self.clock = clock or time.time
         self._lock = threading.Lock()
         self._data = None
+        self._order_books = None
         self._checked = 0.0
         self._api_updated = None
         self._last_error = None
@@ -48,36 +50,65 @@ class Bazaar:
 
     def get(self, refresh=False):
         with self._lock:
-            if not refresh and self._data is not None and self.clock() - self._checked < TTL_SECONDS:
-                return self._response('live-cache')
-            if not refresh and self._data is None and self._failed_at and self.clock()-self._failed_at < 60:
-                return self._response('unavailable')
-            try:
-                payload = self.fetcher()
-                if not isinstance(payload, dict) or payload.get('success') is not True or not isinstance(payload.get('products'), dict):
-                    raise ValueError('Hypixel returned invalid or unsuccessful payload')
-                data = {}
-                for key, item in payload['products'].items():
-                    try:
-                        data[key] = parse_bazaar_product(item)
-                    except (TypeError,ValueError,KeyError):
-                        continue
-                if not data:
-                    raise ValueError('No valid Bazaar product prices')
-                self._data = data
-                self._checked = self.clock()
-                self._api_updated = payload.get('lastUpdated')
-                self._last_error = None
-                self._failed_at = 0.0
-                return self._response('live')
-            except (requests.RequestException, KeyError, ValueError, TypeError, OverflowError) as exc:
-                self._last_error = str(exc)[:250]
-                self._failed_at = self.clock()
-                return self._response('stale' if self._data else 'unavailable')
+            return self._get_locked(refresh)
+
+    def _get_locked(self, refresh=False):
+        if not refresh and self._data is not None and self.clock() - self._checked < TTL_SECONDS:
+            return self._response('live-cache' if self._source_fresh() else 'stale')
+        if not refresh and self._data is None and self._failed_at and self.clock()-self._failed_at < 60:
+            return self._response('unavailable')
+        try:
+            payload = self.fetcher()
+            if not isinstance(payload, dict) or payload.get('success') is not True or not isinstance(payload.get('products'), dict):
+                raise ValueError('Hypixel returned invalid or unsuccessful payload')
+            validated_products = validate_snapshot(payload, now=self.clock())
+            data = {}
+            for key, item in validated_products.items():
+                try:
+                    data[key] = parse_bazaar_product(item)
+                except (TypeError,ValueError,KeyError):
+                    continue
+            if not data:
+                raise ValueError('No valid Bazaar product prices')
+            self._data = data
+            self._order_books = {key: {'buy_summary': item.get('buy_summary'), 'sell_summary': item.get('sell_summary')} for key, item in validated_products.items() if key in data and isinstance(item, dict)}
+            self._checked = self.clock()
+            self._api_updated = payload['lastUpdated']
+            self._last_error = None
+            self._failed_at = 0.0
+            return self._response('live')
+        except (requests.RequestException, KeyError, ValueError, TypeError, OverflowError) as exc:
+            self._last_error = str(exc)[:250]
+            self._failed_at = self.clock()
+            return self._response('stale' if self._data else 'unavailable')
+
+    def live_depth_snapshot(self):
+        """Return prices and their matching order books from one locked refresh."""
+        with self._lock:
+            snapshot = self._get_locked()
+            if not snapshot['live']:
+                raise ValueError('Fresh Bazaar snapshot unavailable')
+            return snapshot, self._order_books or {}
+
+    def live_order_books(self):
+        return self.live_depth_snapshot()[1]
+
+    def depth_quote(self, product_id, quantity, action):
+        from engine.market_integrity import executable_quote
+        _, books = self.live_depth_snapshot()
+        return executable_quote(books, product_id, quantity, action)
+
+    def _source_fresh(self):
+        if self._api_updated is None:
+            return False
+        source_time = float(self._api_updated) / 1000
+        return -30 <= self.clock() - source_time <= MAX_AGE_SECONDS
 
     def _response(self, state):
         # Stale prices must NEVER be treated as verified current prices.
-        is_live = state in ('live', 'live-cache')
+        is_live = state in ('live', 'live-cache') and self._source_fresh()
+        if not is_live and state in ('live', 'live-cache'):
+            state = 'stale'
         return {'state':state, 'live':is_live, 'checked_at':self._checked or None,
                 'api_last_updated':self._api_updated, 'age_seconds': round(self.clock()-self._checked) if self._checked else None,
                 'last_error': self._last_error, 'products':self._data or {}, 'product_count':len(self._data or {}), 'source':URL}

@@ -13,6 +13,8 @@ from dataclasses import dataclass, asdict
 from typing import Any
 from math import isfinite
 from engine.models import bounded_number
+from engine.market_integrity import executable_quote
+from engine.modifier_ledger import build_modifier_ledger
 
 WIKI='https://hypixelskyblock.minecraft.wiki/w/'
 SEA_SOURCE=WIKI+'Sea_Creatures'
@@ -78,16 +80,28 @@ def record(mob: str, rows, source=None, note=None):
 
 def d(n,mid,mn,mx,p=1,tier='common',expected=None):return (n,mid,mn,mx,p,tier,*((expected,) if expected is not None else ()))
 
+# Official Haggard table, reviewed 2026-11-14. No Bazaar identifiers
+# inferred for unverified sale routes; non-item 33 coins excluded.
+record('Haggard',[
+ d('Bone',None,2,4),
+ d('Helix Log',None,8,16),
+ d('Ruby Veilshroom',None,1,2),
+ d('Enchanted Bone',None,1,1,.02),
+ d('Enchanted Helix Log',None,1,1,.05),
+ d('Enchanted Ruby Veilshroom',None,1,1,.01,'rare'),
+ d('Aquamarine Dye',None,1,1,1/5_000_000,'jackpot')
+],note='Official direct-kill loot table; 33 non-item coins and Hunting shard charm rewards excluded. Market IDs require independent Bazaar verification.')
+
 record('Squid',[
  d('Ink Sac','INK_SACK',2,3),d('Lily Pad','WATER_LILY',1,2),
  d('Enchanted Ink Sac','ENCHANTED_INK_SACK',1,1,.005,'rare'),
  d('Squid Boots',None,1,1,.01,'rare'),
  d('Aquamarine Dye',None,1,1,1/5_000_000,'jackpot')], note='Pet double-drop effects and Looting on enchanted ink require separate verification.')
 record('Alligator',[
- d('Enchanted Lily Pad','ENCHANTED_LILY_PAD',2,4), d('Alligator Skin',None,1,1),
+ d('Enchanted Lily Pad','ENCHANTED_WATER_LILY',2,4), d('Alligator Skin',None,1,1),
  d('Condensed Lily Pad',None,1,1,.005,'rare'),d('Aquamarine Dye',None,1,1,1/50_000,'jackpot')])
 record('Titanoboa',[
- d('Enchanted Lily Pad','ENCHANTED_LILY_PAD',2,4),d('Condensed Lily Pad',None,1,1,.01,'rare'),
+ d('Enchanted Lily Pad','ENCHANTED_WATER_LILY',2,4),d('Condensed Lily Pad',None,1,1,.01,'rare'),
  d("Bobbin’ Scriptures",None,1,1,.01,'rare'), d('Titanoboa Shed',None,1,1,.002,'rare'),
  d('Snake Eyes',None,1,1,.0011,'rare'), d('Aquamarine Dye',None,1,1,1/50_000,'jackpot')])
 record('Puddle Jumper',[
@@ -115,12 +129,112 @@ record('Silkbreeze',[
  d('Sublime Silk',None,1,1,.2,'rare'),d('Veilshroom Bunch',None,1,1,.01,'rare'),
  d('Helixis',None,1,1,.01,'rare'),d('Distant Echo',None,1,1,.01,'rare'),
  d('Aquamarine Dye',None,1,1,1/50_000,'jackpot')])
+# Magma Slug: 5 Magmafish guaranteed, 1 Lump of Magma plus a 50%
+# second lump, 2% Slug Boots, 1/5M Carmine Dye. The final baby slug
+# drops loot; Hunting shard extraction is a separate, unmodeled action.
+# Source: https://hypixelskyblock.minecraft.wiki/w/Magma_Slug
+record('Magma Slug',[
+ d('Magmafish','MAGMA_FISH',5,5),d('Lump of Magma',None,1,2,1,'common',1.5),
+ d('Slug Boots',None,1,1,.02,'rare'),
+ d('Carmine Dye',None,1,1,1/5_000_000,'jackpot')],
+ note='Only the final Baby Magma Slug drops loot. Hunting Fortune and shard extraction are excluded.')
+
+# Moogma: verified base drop table, excluding Loot Share and shard extraction.
+# Source: https://hypixelskyblock.minecraft.wiki/w/Moogma
+record('Moogma',[
+ d('Magmafish','MAGMA_FISH',8,8),d('Moogma Pelt',None,1,2,1,'common',1.5),
+ d('Moogma Leggings',None,1,1,.02,'rare'),
+ d('Carmine Dye',None,1,1,1/5_000_000,'jackpot')],
+ note='Moogma lootshare has separate lower quantities/chances; not included in ordinary kills.')
+
+# Source: https://hypixelskyblock.minecraft.wiki/w/Lava_Leech
+# Separate Loot Share rates and Hunting shard extraction are NOT included.
+record('Lava Leech',[
+ d('Magmafish','MAGMA_FISH',20,20),d('Cup of Blood',None,1,1),
+ d('Blade of the Volcano',None,1,1,.05,'rare'),
+ d("Pitchin' Koi",None,1,1,.004,'rare'),
+ d('Carmine Dye',None,1,1,1/2_500_000,'jackpot')],
+ note='Base kill drops only. Loot Share has separate probabilities; Hunting shard extraction and non-item coin drops are excluded.')
+
+# https://hypixelskyblock.minecraft.wiki/w/Pyroclastic_Worm
+# Lootshare and non-item coins (276 per kill) remain separately unmodeled.
+record('Pyroclastic Worm',[
+ d('Magmafish','MAGMA_FISH',10,10),
+ d('Pyroclastic Scale',None,1,1),
+ d('Charm I enchanted book',None,1,1,.01,'rare'),
+ d('Carmine Dye',None,1,1,1/2_500_000,'jackpot')],
+ note='Base direct-kill drops only. Lootshare differs: 2 Magmafish, 20% scale, 0.2% Charm I. Non-item coins excluded.')
+
+# Source: https://hypixelskyblock.minecraft.wiki/w/Lava_Flame
+record('Lava Flame',[
+ d('Magmafish','MAGMA_FISH',40,40),d('Flaming Heart',None,1,1),
+ d('Flaming Chestplate',None,1,1,.02,'rare'),
+ d('Carmine Dye',None,1,1,1/2_500_000,'jackpot')],
+ note='Direct-kill drops only; loot share, Hunting shards, and 273 non-item coins are excluded.')
+# Source: https://hypixelskyblock.minecraft.wiki/w/Fire_Eel
+record('Fire Eel',[
+ d('Magmafish','MAGMA_FISH',50,50),d('Orb of Energy',None,1,1),
+ d('Staff of the Volcano',None,1,1,.05,'rare'),
+ d('Carmine Dye',None,1,1,1/2_500_000,'jackpot')],
+ note='Direct-kill drops only; loot share, Hunting shards, and 303 non-item coins are excluded.')
+# Source: https://hypixelskyblock.minecraft.wiki/w/Taurus
+record('Taurus',[
+ d('Horn of Taurus',None,1,1),d('Silver Magmafish','MAGMA_FISH_SILVER',1,1),
+ d('Taurus Helmet',None,1,1,.02,'rare'),
+ d('Carmine Dye',None,1,1,1/2_500_000,'jackpot')],
+ note='Direct-kill drops only; loot share has different rewards, Hunting shards and 393 non-item coins are excluded.')
+
+# Lava hotspot base-kill tables verified against each creature's current Wiki drop table.
+# These are not full-profit tables: non-item coins, Hunting shards, loot share,
+# treasure rolls, special modifiers, and unverified sale routes remain separate.
+record('Fried Chicken',[
+ d('Magmafish','MAGMA_FISH',1,2),
+ d('Fried Feather',None,1,1,.10,'rare'),
+ d('Carmine Dye',None,1,1,1/5_000_000,'jackpot')],
+ note='Direct kill only; 64 non-item coins excluded.')
+record('Volcanic Snail',[
+ d('Magmafish','MAGMA_FISH',2,4),
+ d('Seared Escargot',None,1,1,.04,'rare'),
+ d('Silver Magmafish','MAGMA_FISH_SILVER',1,1,.01,'rare'),
+ d('Carmine Dye',None,1,1,1/5_000_000,'jackpot')],
+ note='Direct kill only; 90 non-item coins excluded.')
+record('Fireproof Witch',[
+ d('Magmafish','MAGMA_FISH',8,16),d('Gunpowder',None,8,8),
+ d('Enchanted Glowstone Dust',None,1,1,.20),
+ d('Enchanted Gunpowder',None,1,1,.05,'rare'),
+ d('Singed Powder',None,1,1,.01,'rare'),
+ d('Enchanted Glowstone',None,1,1,.0025,'rare'),
+ d('Fire Protection VI enchanted book',None,1,1,.0001,'rare'),
+ d('Carmine Dye',None,1,1,1/2_500_000,'jackpot')],
+ note='Direct kill only; 187 non-item coins excluded. May 2026 revised loot table.')
+record('Magma Pillar',[
+ d('Silver Magmafish','MAGMA_FISH_SILVER',2,4),
+ d('Enchanted Magma Cream',None,2,4),
+ d('Pyroclasm VI enchanted book',None,1,1,.0005,'rare'),
+ d('Carmine Dye',None,1,1,1/2_500_000,'jackpot')],
+ note='Direct kill only; 330 non-item coins excluded.')
+record('Fiery Scuttler',[
+ d('Scorched Crab Stick',None,1,1),
+ d('Silver Magmafish','MAGMA_FISH_SILVER',8,16),
+ d('Severed Pincer',None,1,1,.002,'rare'),
+ d('Scuttler Shell',None,1,1,.001,'rare'),
+ d('Carmine Dye',None,1,1,1/50_000,'jackpot')],
+ note='Direct kill only; 582 non-item coins excluded. Combat time and spawned companions not included.')
+record('Ragnarok',[
+ d('Silver Magmafish','MAGMA_FISH_SILVER',16,32),
+ d("Bobbin' Scriptures",None,1,1,.01,'rare'),
+ d('Chain of the End Times',None,1,1,.01,'rare'),
+ d('Brimstone Handle',None,1,1,.005,'rare'),
+ d('Burnt Texts',None,1,1,.0025,'rare'),
+ d('Carmine Dye',None,1,1,1/50_000,'jackpot')],
+ note='Direct kill only; 3060 non-item coins excluded. Ragnarok has invulnerability phase and high kill-time cost.')
+
 record('Thunder',[
- d('Thunder Fragment',None,1,1),d('Silver Magmafish',None,8,16),
+ d('Thunder Fragment',None,1,1),d('Silver Magmafish','MAGMA_FISH_SILVER',8,16),
  d('Flash I book',None,1,1,.015,'rare'),d('Carmine Dye',None,1,1,1/50_000,'jackpot')],
  note='Flash I book is a major non-Bazaar-valued drop and MUST be included before net profit can be trusted.')
 record('Lord Jawbus',[
- d('Magma Lord Fragment',None,1,1),d('Silver Magmafish',None,16,32),
+ d('Magma Lord Fragment',None,1,1),d('Silver Magmafish','MAGMA_FISH_SILVER',16,32),
  d('Lord Jawbus Shard',None,1,1,.02,'rare'),d("Bobbin’ Scriptures",None,1,1,.01,'rare'),
  d('Radioactive Vial',None,1,1,.005,'rare'), d('Carmine Dye',None,1,1,1/50_000,'jackpot')],
  note='Fight has follower phases; bait and high catch rates alone cannot establish achievable kills/hour.')
@@ -144,19 +258,19 @@ record('Trash Gobbler',[
 record('Dumpster Diver',[
  d('Lily Pad','WATER_LILY',2,4),
  d('Bronze Bowl',None,1,1,.02,'rare'),
- d('Enchanted Lily Pad','ENCHANTED_LILY_PAD',1,1,.01,'rare'),
+ d('Enchanted Lily Pad','ENCHANTED_WATER_LILY',1,1,.01,'rare'),
  d('Overflowing Trash Can',None,1,1,.005,'rare'),
  d('Aquamarine Dye',None,1,1,1/5_000_000,'jackpot')])
 record('Banshee',[
  d('Lily Pad','WATER_LILY',8,16),
  d('Torn Cloth',None,1,1,.03,'rare'),
- d('Enchanted Lily Pad','ENCHANTED_LILY_PAD',1,1,.02,'rare'),
+ d('Enchanted Lily Pad','ENCHANTED_WATER_LILY',1,1,.02,'rare'),
  d('Calcified Heart',None,1,1,.001,'rare'),
  d('Aquamarine Dye',None,1,1,1/2_500_000,'jackpot')])
 record('Bayou Sludge',[
  d('Lily Pad','WATER_LILY',16,32),
  d('Slimeball','SLIME_BALL',16,32),
- d('Enchanted Lily Pad','ENCHANTED_LILY_PAD',1,1,.04,'rare'),
+ d('Enchanted Lily Pad','ENCHANTED_WATER_LILY',1,1,.04,'rare'),
  d('Enchanted Slimeball','ENCHANTED_SLIME_BALL',1,1,.04,'rare'),
  d('Poison Sample',None,1,1,.005,'rare'),
  d('Blessing VI enchanted book',None,1,1,.001,'rare'),
@@ -183,9 +297,9 @@ record('Sea Walker',[
  d('Raw Cod','RAW_FISH',2,2),d('Lily Pad','WATER_LILY',1,1),
  d('Aquamarine Dye',None,1,1,1/5_000_000,'jackpot')])
 record('Sea Witch',[
- d('Raw Salmon','RAW_SALMON',1,3,1,'common',2),
+ d('Raw Salmon','RAW_FISH:1',1,3,1,'common',2),
  d('Lily Pad','WATER_LILY',1,2),
- d('Tropical Fish','CLOWNFISH',1,1,.2),
+ d('Tropical Fish','RAW_FISH:2',1,1,.2),
  d('Fairy Armor Piece',None,1,1,.05,'rare'),
  d('Aquamarine Dye',None,1,1,1/5_000_000,'jackpot')])
 record('Sea Archer',[
@@ -203,14 +317,14 @@ record('Rider of the Deep',[
  d('Magnet VI book',None,1,1,.02,'rare'),
  d('Aquamarine Dye',None,1,1,1/5_000_000,'jackpot')])
 record('Catfish',[
- d('Raw Cod','RAW_FISH',20,20),d('Raw Salmon','RAW_SALMON',10,10),
- d('Pufferfish','PUFFERFISH',5,5),d('Tropical Fish','CLOWNFISH',2,2),
+ d('Raw Cod','RAW_FISH',20,20),d('Raw Salmon','RAW_FISH:1',10,10),
+ d('Pufferfish','RAW_FISH:3',5,5),d('Tropical Fish','RAW_FISH:2',2,2),
  d('Lily Pad','WATER_LILY',2,3),d('Sponge','SPONGE',1,1,.2),
  d('Frail VI book',None,1,1,.01,'rare'),
  d('Aquamarine Dye',None,1,1,1/2_500_000,'jackpot')])
 record('Sea Leech',[
  d('Raw Cod','RAW_FISH',10,10),d('Lily Pad','WATER_LILY',3,4),
- d('Tropical Fish','CLOWNFISH',2,2),d('Sponge','SPONGE',1,1,.4),
+ d('Tropical Fish','RAW_FISH:2',2,2),d('Sponge','SPONGE',1,1,.4),
  d('Spiked Hook VI book',None,1,1,.02,'rare'),
  d('Aquamarine Dye',None,1,1,1/2_500_000,'jackpot')])
 record('Guardian Defender',[
@@ -222,12 +336,12 @@ record('Guardian Defender',[
  d('Aquamarine Dye',None,1,1,1/2_500_000,'jackpot')])
 record('Deep Sea Protector',[
  d('Lily Pad','WATER_LILY',12,15),d('Enchanted Iron Ingot','ENCHANTED_IRON',2,2),
- d('Tropical Fish','CLOWNFISH',2,3),d('Sponge','SPONGE',1,1),
+ d('Tropical Fish','RAW_FISH:2',2,3),d('Sponge','SPONGE',1,1),
  d('Angler VI book',None,1,1,.02,'rare'),
  d('Aquamarine Dye',None,1,1,1/2_500_000,'jackpot')])
 record('Water Hydra',[
- d('Raw Cod','RAW_FISH',20,20),d('Raw Salmon','RAW_SALMON',2,2),
- d('Pufferfish','PUFFERFISH',2,2),d('Tropical Fish','CLOWNFISH',2,2),
+ d('Raw Cod','RAW_FISH',20,20),d('Raw Salmon','RAW_FISH:1',2,2),
+ d('Pufferfish','RAW_FISH:3',2,2),d('Tropical Fish','RAW_FISH:2',2,2),
  d('Sponge','SPONGE',5,5),d('Lily Pad','WATER_LILY',16,18,1,'common',17),
  d('Fish Affinity Talisman',None,1,1,.30,'rare'),
  d('Water Hydra Head',None,1,1,.14,'rare'),
@@ -284,7 +398,9 @@ def rarity_weighted_pool(pool_id:str, *, fishing_level=50, tracking=0,
              'source':WIKI+cr.name.replace(' ','_'),'has_drop_table':cr.name in DROPS}
             for cr,w in weights]
 
-def project_pool(params:dict, prices:dict, *, prices_live:bool=False):
+def project_pool(params:dict, prices:dict, *, prices_live:bool=False, order_books=None, depth_pricing=False):
+    if depth_pricing and (not prices_live or not isinstance(order_books, dict)):
+        raise ValueError('Depth pricing requires a fresh live Bazaar order book')
     pool_id=params.get('pool','basic_water')
     reels=bounded_number(params.get('reels_per_hour',1050),'Reels/hour',0,5000)
     scc=bounded_number(params.get('sea_creature_chance',100),'Sea Creature Chance',0,100)
@@ -330,6 +446,8 @@ def project_pool(params:dict, prices:dict, *, prices_live:bool=False):
     if not squid_pet:pet_multiplier=1
     natural_squids=bounded_number(params.get('natural_squids_per_hour',0),'Natural squids/hour',0,100000)
     hydra_kills=bounded_number(params.get('hydra_kills_per_catch',1),'Hydra kills/catch',1,2)
+    modifier_ledger = build_modifier_ledger()
+    modifier_status = {(r['modifier'], r['reward_channel']): r['status'] for r in modifier_ledger['entries']}
     for mob in loot:
         spawn_count=total_expected*mob['probability']
         kills=spawn_count+(natural_squids if mob['name']=='Squid' else 0)
@@ -345,12 +463,23 @@ def project_pool(params:dict, prices:dict, *, prices_live:bool=False):
                 # Dyes and mutually exclusive pet rolls need separate rules.
                 standard_roll=not d['name'].endswith((' Dye',' Pet'))
                 rolls=d['chance']
+                # Guaranteed stack drops use Looting as an expected quantity
+                # multiplier, not as an impossible >100% Bernoulli probability.
+                quantity_multiplier=1.0
                 if standard_roll:
-                    rolls*=1+0.15*looting
-                    if rolls < 0.05:
-                        rolls*=1+magic_find/100
-                per_mob=d['expected_quantity']*rolls
+                    if d['chance'] >= 1:
+                        quantity_multiplier=1+0.15*looting
+                    else:
+                        rolls*=1+0.15*looting
+                        if rolls < 0.05:
+                            rolls*=1+magic_find/100
+                # A single Bernoulli drop row cannot fire more than once per kill.
+                rolls=min(1.0, rolls)
+                per_mob=d['expected_quantity']*quantity_multiplier*rolls
                 qty=kills*per_mob*(pet_multiplier if mob['name']=='Squid' else 1)
+                # Counterfactual: same catches and pet assumption, but no speculative
+                # Looting/MF eligibility. This is NOT a verified lower bound.
+                base_qty=kills*d['expected_quantity']*d['chance']*(pet_multiplier if mob['name']=='Squid' else 1)
                 price=None;price_type=None
                 # Bazaar prices are player INSTANT SELL for drops, and no price
                 # is inferred for AH items. Manual item prices keyed by exact item name.
@@ -375,35 +504,146 @@ def project_pool(params:dict, prices:dict, *, prices_live:bool=False):
                     else:subtotal+=val
                 entry['drops'].append({'name':d['name'],'market_id':d['market_id'],
                            'base_chance':d['chance'],'adjusted_chance':min(1,rolls),'expected_rolls_per_kill':rolls,
-                           'standard_modifiers_modeled':standard_roll,'expected_quantity_per_kill':d['expected_quantity'], 'expected_units':qty,
+                           'standard_modifiers_modeled':standard_roll,'expected_quantity_per_kill':d['expected_quantity'], 'quantity_modifier_multiplier':quantity_multiplier, 'expected_units':qty,
                            'tier':d['tier'],'unit_price':price,'price_source':price_type,'expected_coins':val,
+                           'base_no_looting_mf_expected_units':base_qty,
+                           'base_no_looting_mf_expected_coins':base_qty*price if price is not None else None,
+                           'heuristic_modifier_delta_units':qty-base_qty,
+                           'modifier_eligibility_status': {
+                               'looting': modifier_status[('looting','dyes_and_jackpots' if not standard_roll else 'direct_kill_items')],
+                               'magic_find': modifier_status[('magic_find','dyes_and_jackpots' if not standard_roll else 'direct_kill_items')],
+                           },
+                           'modifier_calculation_provenance': 'generalized-unverified-heuristic' if standard_roll else 'base-chance-no-generalized-modifier',
                            'source':drop_info['source']})
         rows.append(entry)
+    # Optional, fail-closed executable-depth pricing. Aggregate expected hourly units
+    # per market ID before quoting: separate creature rolls share the same order book.
+    # Keep the ordinary quick_status model unchanged unless explicitly requested.
+    if depth_pricing:
+        quantities = {}
+        for entry in rows:
+            for drop in entry['drops']:
+                mid = drop['market_id']
+                if mid and drop['expected_coins'] is not None and drop['expected_units'] > 0 and drop['price_source'] == 'bazaar-live':
+                    quantities[mid] = quantities.get(mid, 0) + drop['expected_units']
+        # Quote the two scenarios at their OWN expected hourly volume.
+        # A shared depth price overstates or understates the base scenario
+        # whenever order-book levels have different prices.
+        base_quantities = {}
+        for entry in rows:
+            for drop in entry['drops']:
+                mid = drop['market_id']
+                if mid in quantities and drop['price_source'] == 'bazaar-live':
+                    base_quantities[mid] = base_quantities.get(mid, 0) + drop['base_no_looting_mf_expected_units']
+        depth_prices = {}
+        base_depth_prices = {}
+        for mid, quantity in quantities.items():
+            depth_prices[mid] = executable_quote(order_books, mid, quantity, 'instant_sell')['unit_price']
+            base_quantity = base_quantities.get(mid, 0)
+            if base_quantity > 0:
+                base_depth_prices[mid] = executable_quote(order_books, mid, base_quantity, 'instant_sell')['unit_price']
+        subtotal = base_rare = jackpot = 0.0
+        priced = []
+        for entry in rows:
+            for drop in entry['drops']:
+                mid = drop['market_id']
+                if mid in depth_prices and drop['price_source'] == 'bazaar-live':
+                    drop['unit_price'] = depth_prices[mid]
+                    drop['price_source'] = 'bazaar-depth-indicative'
+                    drop['expected_coins'] = drop['expected_units'] * depth_prices[mid]
+                    drop['base_no_looting_mf_expected_coins'] = drop['base_no_looting_mf_expected_units'] * base_depth_prices[mid]
+                if drop['expected_coins'] is not None:
+                    priced.append({'mob': entry['name'], 'drop': drop['name'],
+                                   'coins': drop['expected_coins'], 'price_type': drop['price_source']})
+                    if drop['tier'] == 'jackpot': jackpot += drop['expected_coins']
+                    elif drop['tier'] == 'rare': base_rare += drop['expected_coins']
+                    else: subtotal += drop['expected_coins']
+    base_no_modifier_priced_subtotal=sum(
+        d['base_no_looting_mf_expected_coins']
+        for mob in rows for d in mob['drops']
+        if d['base_no_looting_mf_expected_coins'] is not None and d['tier'] != 'jackpot')
     # Operating costs: require current instant-BUY input price or a manual price.
     bait=params.get('bait','NONE')
     saved=bounded_number(params.get('bait_saved_percent',10),'Bait saved percent',0,100)
     bprice=0.0 if bait=='NONE' else None
+    bait_price_source='none' if bait=='NONE' else None
     if bait!='NONE':
         record=prices.get(bait)
         if isinstance(record,dict):
             try:
                 v=float(record['instant_buy'])
-                if isfinite(v) and v>0:bprice=v
+                if isfinite(v) and v>0:
+                    bprice=v
+                    bait_price_source='bazaar-live' if prices_live else 'bazaar-unverified'
             except (ValueError,TypeError,KeyError,OverflowError):pass
         if bprice is None and params.get('manual_bait_price') is not None:
             v=bounded_number(params['manual_bait_price'],'Manual bait price',0,1e10)
-            if v>0:bprice=v
-    cost_bait=(reels*(1-saved/100)*bprice) if bprice is not None else None
+            if v>0:
+                bprice=v
+                bait_price_source='manual-unverified'
+    bait_units = reels*(1-saved/100)
+    if depth_pricing and bait!='NONE' and bait_units>0:
+        if bait_price_source != 'bazaar-live':
+            raise ValueError('Depth pricing requires a live Bazaar bait price; manual bait prices cannot be depth-quoted')
+        bprice=executable_quote(order_books, bait, bait_units, 'instant_buy')['unit_price']
+        bait_price_source='bazaar-depth-indicative'
+    cost_bait=(bait_units*bprice) if bprice is not None else None
+    # Coverage is weighted by projected creature encounters, not table counts.
+    # A complete table can still have unknown prices or missing reward channels.
+    total_catches = sum(m['expected_per_hour'] for m in rows)
+    missing_table_catches = sum(m['expected_per_hour'] for m in rows if not m['has_drop_table'])
+    known_table_catches = total_catches - missing_table_catches
+    priced_row_count = sum(d['expected_coins'] is not None for m in rows for d in m['drops'])
+    unpriced_row_count = sum(d['expected_coins'] is None and d['expected_units'] > 0
+                             for m in rows for d in m['drops'])
+    missing_table_share = missing_table_catches / total_catches if total_catches > 0 else None
+    # Research queue: missing tables ranked by encounter frequency, not assumed
+    # coin value. Hotspot/base blends are already represented in these rates.
+    missing_table_priority = sorted(
+        ({'creature': m['name'], 'expected_encounters_per_hour': m['expected_per_hour'],
+          'share_of_all_creature_encounters': (
+              m['expected_per_hour'] / total_catches if total_catches > 0 else None),
+          'source': m['source'], 'profit_impact': 'unknown-until-drops-and-prices-verified'}
+         for m in rows if not m['has_drop_table'] and m['expected_per_hour'] > 0),
+        key=lambda x: (-x['expected_encounters_per_hour'], x['creature']))
+    missing_table_priority_share = (
+        sum(x['expected_encounters_per_hour'] for x in missing_table_priority[:3])
+        / missing_table_catches if missing_table_catches > 0 else None)
+    coverage = {
+        'expected_creature_encounters_per_hour': total_catches,
+        'missing_drop_table_encounters_per_hour': missing_table_catches,
+        'missing_drop_table_encounter_share': missing_table_share,
+        'missing_drop_table_research_priority': missing_table_priority,
+        'top_three_missing_table_encounter_share': missing_table_priority_share,
+        'documented_drop_table_encounters_per_hour': known_table_catches,
+        'priced_drop_rows': priced_row_count,
+        'unpriced_positive_ev_drop_rows': unpriced_row_count,
+        'includes_treasure': False,
+        'includes_hunting_shards': False,
+        'includes_lootshare': False,
+        'includes_kill_time_constraints': False,
+        'full_profit_coverage': False,
+        'note': 'Encounter share is not profit share. Missing reward tables and prices have unknown coin value.'
+    }
     # The evaluated subset MUST NEVER be mistaken for full profitability.
     subtotal_and_rare=subtotal+base_rare
     return {'pool':pool_id,'pool_name':POOLS[pool_id]['name'],'creature_rate':total_expected,'hotspot_override_percent':None if override_share is None else override_share*100,
       'creatures':rows,'known_common_revenue':subtotal,'known_rare_base_ev':base_rare,
       'known_jackpot_base_ev':jackpot,'known_subtotal':subtotal_and_rare,
       'known_subtotal_after_bait':subtotal_and_rare-cost_bait if cost_bait is not None else None,
-      'bait_cost':cost_bait,'bait_price':bprice,
+      'base_no_looting_mf_priced_subtotal':base_no_modifier_priced_subtotal,
+      'base_no_looting_mf_after_bait':base_no_modifier_priced_subtotal-cost_bait if cost_bait is not None else None,
+      'modifier_scenario_disclaimer':'Counterfactual on priced subset only; assumes same catch/pet conditions and base drop rates, not verified profit or a lower bound. Depth-priced scenarios are independently quoted at their own modeled volumes.',
+      'bait_cost':cost_bait,'bait_price':bprice,'bait_price_source':bait_price_source,
       'unpriced':unpriced,'unmodelled':unmodelled,'priced':priced,'priced_drop_entries':len(priced),
+      'reward_coverage':coverage,
       'has_complete_loot':not (unpriced or unmodelled),
       'is_full_method_profit':False, 'prices_live':prices_live,
+      'modifier_eligibility_verified':False,
+      'modifier_ledger_summary':{'tracked_interactions':len(modifier_ledger['entries']),
+                                 'verified_profit_modifier_count':modifier_ledger['verified_profit_modifier_count'],
+                                 'unverified_count':modifier_ledger['unverified_count']},
+      'depth_pricing':depth_pricing, 'depth_quote_type':'indicative-hourly-order-depth' if depth_pricing else None,
       'warnings':['Partial financial coverage: prices are missing and/or full loot behavior is unmodelled.',
                   'Standard drop rolls apply Looting first, then Magic Find below 5%. Pet and dye rolls use base rates. Charm shards, loot-sharing and actual kill time are outside this projection.',
                   'Bait cost is known only when priced; full net profit is deliberately unavailable.',

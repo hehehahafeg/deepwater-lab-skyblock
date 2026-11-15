@@ -5,6 +5,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from engine.market import Bazaar
+from engine.market_audit import audit_market_ids
 from engine.optimizer import optimize_loadouts
 from engine.estimates import estimate_strategy
 from engine.models import CATALOG, SQUID_SOURCES, sensitivity, rank_methods, payback_hours
@@ -72,6 +73,26 @@ def strategy_detail(strategy_id:str, magic_find:float=Query(300,ge=0,le=1000), c
 def prices(refresh:bool=False):
     return market.get(refresh)
 
+@app.get('/api/market/audit')
+def market_audit():
+    snapshot = market.get()
+    if not snapshot['live']:
+        raise HTTPException(status_code=503, detail='Fresh Bazaar snapshot unavailable')
+    return {'market_api_last_updated': snapshot['api_last_updated'],
+            'market_state': snapshot['state'],
+            **audit_market_ids(snapshot['products'])}
+
+
+@app.get('/api/market/depth-quote')
+def market_depth_quote(product_id: str, quantity: float = Query(..., gt=0), action: str = Query(...)):
+    if action not in ('instant_sell', 'instant_buy'):
+        raise HTTPException(status_code=422, detail='Invalid action')
+    try:
+        return market.depth_quote(product_id, quantity, action)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+
+
 @app.post('/api/calculate/squid')
 def calculate(payload:CalcRequest):
     snapshot=market.get() if payload.use_live_market else {'live':False,'products':{}}
@@ -96,6 +117,20 @@ def pools_project(payload:PoolRequest):
         return project_pool(payload.params,snapshot['products'] if snapshot['live'] else {},prices_live=snapshot['live'])
     except ValueError as exc:
         raise HTTPException(status_code=422,detail=str(exc))
+
+@app.post('/api/pools/project-depth')
+def pools_project_depth(payload: PoolRequest):
+    """Partial pool EV using indicative hourly Bazaar order depth; fails closed."""
+    if not payload.use_live_market:
+        raise HTTPException(status_code=422, detail='Depth pricing requires live market')
+    try:
+        snapshot, books = market.live_depth_snapshot()
+        return project_pool(payload.params, snapshot['products'], prices_live=True,
+                            order_books=books, depth_pricing=True)
+    except ValueError as exc:
+        status = 503 if str(exc) == 'Fresh Bazaar snapshot unavailable' else 422
+        raise HTTPException(status_code=status, detail=str(exc))
+
 
 @app.post('/api/pools/compare-helmets')
 def compare_helmets(payload: PoolRequest):
